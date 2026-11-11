@@ -4383,10 +4383,12 @@ document.addEventListener('webkitfullscreenchange', () => {
   const VMAX_MPM = 500;                 // teto de referência para o andamento
   const HORSE_SCALE = 0.85;             // modelo ≈118 px (2,4 m) → ≈100 px (2,0 m)
   const SHEAR = 0.62;                   // inclinação visual (altura → tela)
-  const MUZZLE_OFFSET = 78 * HORSE_SCALE;   // centro do corpo → focinho (px)
-  const LAG_MIN = MUZZLE_OFFSET + 18;       // guia curta (dedo parado)
-  const LAG_SLACK = 34;                     // folga extra com velocidade
-  const LAG_IDLE = MUZZLE_OFFSET + 4;       // dedo levantado: cavalo se aproxima
+  // O dedo/mouse fica SOBRE o cavaleiro. Na visão 3/4 a altura desloca a imagem
+  // para cima na tela (SHEAR por unidade de altura), então o chão do cavalo é
+  // posto SHIFT_Y mais abaixo para que o tronco do cavaleiro coincida com o dedo.
+  const RIDER_H = 102 * HORSE_SCALE;        // altura do centro do tronco do cavaleiro
+  const SHIFT_Y = SHEAR * RIDER_H;          // deslocamento do chão (unidades do SVG)
+  const LAG_MIN = 0, LAG_SLACK = 0, LAG_IDLE = 0;   // sem guia: o cavalo "carrega" o dedo
 
   const L = (LANG === 'pt') ? {
     btn: '🐎 Cavalo 3D', on: 'ligado', off: 'desligado', halt: 'Parado', walk: 'Passo', trot: 'Trote', canter: 'Galope',
@@ -4814,7 +4816,7 @@ document.addEventListener('webkitfullscreenchange', () => {
 
     // posição: ponto do rastro a "lag" px atrás do dedo (suavizado)
     const T = posAtBack(R.lag);
-    const k = 1 - Math.exp(-dt * 20);
+    const k = 1 - Math.exp(-dt * 26);
     const nx = R.x + (T.x - R.x) * k, ny = R.y + (T.y - R.y) * k;
     const moved = Math.hypot(nx - R.x, ny - R.y);
     R.x = nx; R.y = ny;
@@ -4844,7 +4846,7 @@ document.addEventListener('webkitfullscreenchange', () => {
     horse.visible = R.vis;
     if (R.vis) {
       animateHorse(dt);
-      horse.position.set(R.x, 0, R.y);
+      horse.position.set(R.x, 0, R.y + SHIFT_Y);
       horse.rotation.y = -R.heading;
       horse.rotation.x = Math.max(-0.2, Math.min(0.2, R.turn * 0.11)) * Math.min(1, R.speed / 120);
       horse.updateMatrixWorld(true);
