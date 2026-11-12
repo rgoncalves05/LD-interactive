@@ -940,7 +940,8 @@ body.rp-fs.rp-bar .canvas-wrap.fs-active #board { max-height: calc(100dvh - 108p
   font-weight: 700;
   cursor: pointer;
 }
-#replay-bar .rp-spd.active { background: #0d7a55; border-color: #7ef0bf; }
+#replay-bar .rp-spd.active, #replay-bar .rp-povbtn.active { background: #0d7a55; border-color: #7ef0bf; }
+#replay-bar .rp-povbtn { margin-left: 6px; white-space: nowrap; }
 #rp-seek { flex: 1; min-width: 0; accent-color: #0d7a55; touch-action: pan-x; }
 #rp-time { font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
@@ -981,6 +982,9 @@ body.rp-fs #bw-lang { display: none; }
 #fin-bubble.on { opacity: 1; transform: translate(-50%, -100%) scale(1); }
 #fin-bubble::after { content: ''; position: absolute; left: calc(50% + var(--tail, 0px)); bottom: -8px; width: 14px; height: 14px; background: #fff;
   transform: translateX(-50%) rotate(45deg); border-radius: 0 0 4px 0; box-shadow: 3px 3px 5px rgba(0,0,0,.12); }
+
+#btn-pov.active { background: #0d7a55 !important; color: #fff !important; }
+#fs-topbar button.active { background: rgba(13,122,85,.9); }
 
 </style>
 </head>
@@ -4590,10 +4594,10 @@ document.addEventListener('webkitfullscreenchange', () => {
   const LAG_MIN = 0, LAG_SLACK = 0, LAG_IDLE = 0;   // sem guia: o cavalo "carrega" o dedo
 
   const L = (LANG === 'pt') ? {
-    replay: '🎬 Replay', home: '🏠 Início', homeAsk: 'Sair do percurso e voltar ao início?', restart: '↺ Recomeçar', exitFs: 'Sair da tela cheia', btn: '🐎 Cavalo 3D', on: 'ligado', off: 'desligado', halt: 'Parado', walk: 'Passo', trot: 'Trote', canter: 'Galope',
+    replay: '🎬 Replay', pov: '👁 Visão do cavaleiro', top: '🗺 Vista de cima', home: '🏠 Início', homeAsk: 'Sair do percurso e voltar ao início?', restart: '↺ Recomeçar', exitFs: 'Sair da tela cheia', btn: '🐎 Cavalo 3D', on: 'ligado', off: 'desligado', halt: 'Parado', walk: 'Passo', trot: 'Trote', canter: 'Galope',
     noGL: 'Seu navegador não suporta gráficos 3D (WebGL).', m: 'm/min'
   } : {
-    replay: '🎬 Replay', home: '🏠 Home', homeAsk: 'Leave the course and go back home?', restart: '↺ Restart', exitFs: 'Exit fullscreen', btn: '🐎 3D horse', on: 'on', off: 'off', halt: 'Halt', walk: 'Walk', trot: 'Trot', canter: 'Canter',
+    replay: '🎬 Replay', pov: '👁 Rider view', top: '🗺 Top view', home: '🏠 Home', homeAsk: 'Leave the course and go back home?', restart: '↺ Restart', exitFs: 'Exit fullscreen', btn: '🐎 3D horse', on: 'on', off: 'off', halt: 'Halt', walk: 'Walk', trot: 'Trot', canter: 'Canter',
     noGL: 'Your browser does not support 3D graphics (WebGL).', m: 'm/min'
   };
 
@@ -5263,7 +5267,69 @@ document.addEventListener('webkitfullscreenchange', () => {
     return d;
   }
 
+  // Depois de cruzar o último obstáculo o cavalo continua seguindo o dedo/mouse;
+  // a cena da cavaleira só começa quando o ponteiro fica parado (ou sai da tela) por mais de 3 s.
+  const POST = { on: false, x: 0, y: 0, has: false, last: 0 };
+  const POST_IDLE_MS = 3000;
+  POST.ax = 0; POST.ay = 0; POST.released = false;
+  function postPoint(e) {
+    try { const p = getPos(e); if (isFinite(p.x) && isFinite(p.y)) return p; } catch (_) {}
+    return null;
+  }
+  // movimento real do ponteiro (ignora "mousemove" sintético que o navegador dispara com o mouse parado)
+  ['pointermove', 'mousemove', 'touchmove'].forEach(ev =>
+    window.addEventListener(ev, e => {
+      if (!POST.on || POST.released) return;
+      const p = postPoint(e); if (!p) return;
+      POST.x = p.x; POST.y = p.y;
+      if (!POST.has || Math.hypot(p.x - POST.ax, p.y - POST.ay) > 6) { POST.ax = p.x; POST.ay = p.y; POST.last = performance.now(); }
+      POST.has = true;
+    }, { capture: true, passive: true }));
+  ['pointerdown', 'mousedown', 'touchstart'].forEach(ev =>
+    window.addEventListener(ev, e => {
+      if (!POST.on) return;
+      const p = postPoint(e); if (!p) return;
+      POST.released = false; POST.has = true; POST.x = p.x; POST.y = p.y; POST.ax = p.x; POST.ay = p.y; POST.last = performance.now();
+    }, { capture: true, passive: true }));
+  // estado do ponteiro (algum dedo/botão pressionado?)
+  const PTR = { down: false };
+  ['pointerdown', 'mousedown', 'touchstart'].forEach(ev =>
+    window.addEventListener(ev, () => { PTR.down = true; }, { capture: true, passive: true }));
+  // dedo levantado / botão solto / ponteiro fora da janela: termina na hora (sem esperar os 3 s)
+  const onRelease = () => { PTR.down = false; if (POST.on) { POST.released = true; beginFinishSequence(); } };
+  ['pointerup', 'pointercancel', 'mouseup', 'touchend', 'touchcancel'].forEach(ev =>
+    window.addEventListener(ev, onRelease, { capture: true, passive: true }));
+  document.documentElement.addEventListener('mouseleave', () => { if (POST.on && PTR.down) { PTR.down = false; onRelease(); } });
+  window.addEventListener('blur', () => { PTR.down = false; if (POST.on) onRelease(); });
+
+  function beginFinishSequence() {
+    POST.on = false;
+    const popup = document.getElementById('popup-overlay');
+    popup.classList.remove('visible');
+    startFinish();
+    const tok = FIN.token;
+    setTimeout(() => { if (FIN.on && FIN.token === tok) popup.classList.add('visible'); }, 8600);
+  }
+  function updatePost(dt) {
+    if (POST.has) {
+      const k = 1 - Math.exp(-dt * 14);
+      const dx = POST.x - R.x, dy = POST.y - R.y, d = Math.hypot(dx, dy);
+      const nx = R.x + dx * k, ny = R.y + dy * k;
+      const moved = Math.hypot(nx - R.x, ny - R.y);
+      if (d > 8) {
+        const prevH = R.heading;
+        R.heading += angDiff(Math.atan2(dy, dx), R.heading) * Math.min(1, dt * 7);
+        R.turn += (angDiff(R.heading, prevH) / dt - R.turn) * Math.min(1, dt * 8);
+      } else R.turn += (0 - R.turn) * Math.min(1, dt * 8);
+      R.x = nx; R.y = ny;
+      R.speed += (moved / dt - R.speed) * Math.min(1, dt * 8);
+    } else R.speed += (0 - R.speed) * Math.min(1, dt * 8);
+    if (R.speed < 0.8) R.speed = 0;
+    if (performance.now() - POST.last > POST_IDLE_MS) beginFinishSequence();
+  }
+
   function update(dt) {
+    if (POST.on && !FIN.on && !RP.active) { updatePost(dt); return; }
     if (FIN.on) {
       if (RP.active && RP.s < RP.total - 0.05) stopFinish();      // voltou a barra do replay
       else { stepFinish(dt); if (RP.active) syncReplayUI(); return; }
@@ -5333,6 +5399,8 @@ document.addEventListener('webkitfullscreenchange', () => {
     elGait.textContent = L[g];
     elMpm.textContent = Math.round(mpm) + ' ' + L.m;
     elBadge.style.display = R.vis ? '' : 'none';
+    if (povActive()) { povFrame(); renderer.render(scene, POV.cam); return; }
+    povOff();
     renderer.render(scene, camera);
   }
 
@@ -5528,7 +5596,8 @@ document.addEventListener('webkitfullscreenchange', () => {
     '<span id="rp-time">0:00 / 0:00</span>' +
     '<button id="rp-close" class="rp-btn" aria-label="close">✕</button></div>' +
     '<div class="rp-row rp-speeds">' +
-    [0.5, 1, 2, 3, 4].map(v => '<button class="rp-spd" data-s="' + v + '">' + v + '×</button>').join('') + '</div>';
+    [0.5, 1, 2, 3, 4].map(v => '<button class="rp-spd" data-s="' + v + '">' + v + '×</button>').join('') +
+    '<button id="rp-pov" class="rp-povbtn">' + L.pov + '</button></div>';
   wrapC.insertAdjacentElement('afterend', rpBar);
   const rpPlay = rpBar.querySelector('#rp-play');
   const rpSeek = rpBar.querySelector('#rp-seek');
@@ -5550,6 +5619,7 @@ document.addEventListener('webkitfullscreenchange', () => {
   function startReplay() {
     if (!canReplay()) return;
     if (!R.on) setHorse(true);
+    POST.on = false;
     if (!R.ok) return;
     const popup = document.getElementById('popup-overlay');
     if (popup) popup.classList.remove('visible');
@@ -5565,11 +5635,13 @@ document.addEventListener('webkitfullscreenchange', () => {
     if (!(wrapC && wrapC.classList.contains('fs-active'))) rpBar.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     stopFinish();
     revealBegin();
+    if (POV.on) povBuild();
     syncReplayUI();
   }
   function stopReplay() {
     if (!RP.active) return;
     RP.active = false; RP.playing = false;
+    povOff();
     rpBar.classList.remove('on');
     document.body.classList.remove('rp-bar');
     revealEnd();
@@ -5604,6 +5676,397 @@ document.addEventListener('webkitfullscreenchange', () => {
     syncReplayUI();
   }
 
+
+  // ═══════════════ VISÃO DO CAVALEIRO (replay em primeira pessoa) ═══════════════
+  // Câmera em perspectiva na altura dos olhos, seguindo posição e direção do cavalo,
+  // num mundo 3D montado a partir dos mesmos obstáculos e do mesmo trajeto.
+  const POV = { on: true, cam: null, grp: null, ribbon: null, rIdx: [], mk: [], neck: null, shown: false, key: '' };
+  const EYE_H = 108;
+
+  // ── Patrocinadores nos banners do modo "visão do cavaleiro" ──
+  // EDITE AQUI: troque os textos (ou informe "img": "logo.png", arquivo na mesma pasta do jogo.html).
+  const VINCI_IMG = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAQDAwMDAgQDAwMEBAQFBgoGBgUFBgwICQcKDgwPDg4MDQ0PERYTDxAVEQ0NExoTFRcYGRkZDxIbHRsYHRYYGRj/2wBDAQQEBAYFBgsGBgsYEA0QGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBj/wAARCAEAAQADASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD5dooor+iD8/CiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigA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';
+  const SPONSORS = [
+    { name: 'VINCI COMPASS', bg: '#022ea7', fg: '#ffffff', img: VINCI_IMG },
+    { name: 'ROLEX', bg: '#ffffff', fg: '#1b1b1b', font: 'serif' },
+    { name: 'AUDI', bg: '#1b1b1b', fg: '#f2f2f2' },
+    { name: 'LUCIANA DINIZ INTERACTIVE', bg: '#cf1fa3', fg: '#ffffff' },
+    { name: 'SEU LOGO AQUI', bg: '#0d7a55', fg: '#ffffff' }
+  ];
+  // Billboards grandes ao fundo. Para usar o logotipo oficial, coloque o arquivo ao lado do jogo.html
+  // e informe aqui, por exemplo: img: 'rolex.png'
+  const BILLBOARDS = [
+    { name: 'ROLEX', bg: '#ffffff', fg: '#1b1b1b', font: 'serif' },
+    { name: 'AUDI', bg: '#e9eaee', fg: '#1b1b1b' },
+    { name: 'VINCI COMPASS', bg: '#022ea7', fg: '#ffffff', img: VINCI_IMG }
+  ];
+  function billboardTexture(sp) {
+    const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 448;
+    const g = cv.getContext('2d'), tex = new THREE.CanvasTexture(cv); tex.anisotropy = 4;
+    const draw = () => {
+      g.fillStyle = sp.bg; g.fillRect(0, 0, 1024, 448);
+      const im = sp.img && _spImgs[sp.img];
+      if (im && im.complete && im.naturalWidth) {
+        const k = Math.min(1000 / im.naturalWidth, 420 / im.naturalHeight);
+        g.drawImage(im, (1024 - im.naturalWidth * k) / 2, (448 - im.naturalHeight * k) / 2, im.naturalWidth * k, im.naturalHeight * k);
+      } else {
+        g.fillStyle = sp.fg; g.textAlign = 'center'; g.textBaseline = 'middle';
+        let fs = 190; const fam = sp.font === 'serif' ? 'Georgia, "Times New Roman", serif' : '"DM Sans", Arial, sans-serif';
+        g.font = '800 ' + fs + 'px ' + fam;
+        while (g.measureText(sp.name).width > 900 && fs > 30) { fs -= 6; g.font = '800 ' + fs + 'px ' + fam; }
+        g.fillText(sp.name, 512, 232);
+      }
+      tex.needsUpdate = true;
+    };
+    if (sp.img && !_spImgs[sp.img]) { const im = new Image(); im.onload = draw; im.src = sp.img; _spImgs[sp.img] = im; }
+    else if (sp.img && !_spImgs[sp.img].complete) _spImgs[sp.img].addEventListener('load', draw);
+    draw();
+    return tex;
+  }
+  const _spImgs = {};
+  function sponsorTexture(len) {
+    const cells = Math.max(2, Math.round(len / 100)), cw = 400, chh = 96;
+    const cv = document.createElement('canvas'); cv.width = cells * cw; cv.height = chh;
+    const g = cv.getContext('2d');
+    const tex = new THREE.CanvasTexture(cv); tex.anisotropy = 4;
+    const draw = () => {
+      for (let i = 0; i < cells; i++) {
+        const sp = SPONSORS[i % SPONSORS.length];
+        g.fillStyle = sp.bg; g.fillRect(i * cw, 0, cw, chh);
+        g.fillStyle = 'rgba(255,255,255,.55)'; g.fillRect(i * cw, 0, 4, chh);
+        const im = sp.img && _spImgs[sp.img];
+        if (im && im.complete && im.naturalWidth) {
+          const k = Math.min((cw - 40) / im.naturalWidth, (chh - 20) / im.naturalHeight);
+          g.drawImage(im, i * cw + (cw - im.naturalWidth * k) / 2, (chh - im.naturalHeight * k) / 2, im.naturalWidth * k, im.naturalHeight * k);
+        } else {
+          g.fillStyle = sp.fg; g.textAlign = 'center'; g.textBaseline = 'middle';
+          let fs = 40; g.font = '800 ' + fs + 'px "DM Sans", Arial, sans-serif';
+          while (g.measureText(sp.name).width > cw - 36 && fs > 14) { fs -= 2; g.font = '800 ' + fs + 'px "DM Sans", Arial, sans-serif'; }
+          g.fillText(sp.name, i * cw + cw / 2, chh / 2 + 2);
+        }
+      }
+      tex.needsUpdate = true;
+    };
+    draw();
+    SPONSORS.forEach(sp => {
+      if (sp.img && !_spImgs[sp.img]) { const im = new Image(); im.onload = draw; im.src = sp.img; _spImgs[sp.img] = im; }
+      else if (sp.img && _spImgs[sp.img] && !_spImgs[sp.img].complete) _spImgs[sp.img].addEventListener('load', draw);
+    });
+    return tex;
+  }
+  function povActive() { return POV.on && RP.active && !FIN.on && R.ok && R.vis && POV.grp; }
+  function povOff() {
+    if (!POV.shown) return;
+    POV.shown = false;
+    if (POV.grp) POV.grp.visible = false;
+    if (POV.cam) POV.cam.visible = false;
+    scene.fog = null;
+    renderer.setClearColor(0x000000, 0);
+  }
+  function povBuild() {
+    if (POV.grp) { scene.remove(POV.grp); POV.grp.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
+    const grp = new THREE.Group();
+    const C = c => new THREE.Color(c);
+    const vb = svg.viewBox.baseVal;
+    const piso = (typeof _currentPiso !== 'undefined') ? _currentPiso : 'areia';
+    const arenaCol = (typeof PISO_COLORS !== 'undefined' && PISO_COLORS[piso]) || '#e8d5a3';
+    const outCol = piso === 'grama' ? '#2f6a2b' : '#6f9a4d';
+    // chão: campo ao redor + piso da arena
+    const out = new THREE.Mesh(new THREE.PlaneGeometry(9000, 9000), new THREE.MeshLambertMaterial({ color: C(outCol).multiplyScalar(0.62) }));
+    out.rotation.x = -Math.PI / 2; out.position.set(vb.x + vb.width / 2, -4, vb.y + vb.height / 2); grp.add(out);
+    const are = new THREE.Mesh(new THREE.PlaneGeometry(vb.width, vb.height), new THREE.MeshLambertMaterial({ color: C(arenaCol).multiplyScalar(0.7) }));
+    are.rotation.x = -Math.PI / 2; are.position.set(vb.x + vb.width / 2, 0, vb.y + vb.height / 2); grp.add(are);
+    // cerca baixa em volta da arena
+    const fm = new THREE.MeshLambertMaterial({ color: 0xc9c5bb });
+    const fence = (cx, cz, w, d) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, 34, d), fm); b.position.set(cx, 17, cz); grp.add(b); };
+    fence(vb.x + vb.width / 2, vb.y, vb.width + 8, 6);
+    fence(vb.x + vb.width / 2, vb.y + vb.height, vb.width + 8, 6);
+    fence(vb.x, vb.y + vb.height / 2, 6, vb.height + 8);
+    fence(vb.x + vb.width, vb.y + vb.height / 2, 6, vb.height + 8);
+    // obstáculos: toras listradas deitadas no chão
+    const n = Math.min(NUM_LOGS, LOGS.length);
+    const seg = LOG_W / 6, rad = LOG_H / 2;
+    for (let i = 0; i < n; i++) {
+      const lg = LOGS[i], pc = POLE_COLORS[i % POLE_COLORS.length];
+      const g = new THREE.Group();
+      for (let k = 0; k < 6; k++) {
+        const m = new THREE.Mesh(new THREE.CylinderGeometry(rad, rad, seg, 14, 1),
+          new THREE.MeshLambertMaterial({ color: C(k % 2 ? pc[1] : pc[0]) }));
+        m.rotation.z = Math.PI / 2; m.position.set(-LOG_W / 2 + seg * (k + 0.5), rad, 0); g.add(m);
+      }
+      [-1, 1].forEach(sd => {
+        const cap = new THREE.Mesh(new THREE.SphereGeometry(rad, 14, 10), new THREE.MeshLambertMaterial({ color: C(pc[2]) }));
+        cap.position.set(sd * LOG_W / 2, rad, 0); g.add(cap);
+      });
+      g.position.set(lg.x, 0, lg.y); g.rotation.y = -lg.angle * Math.PI / 180;
+      grp.add(g);
+    }
+
+    // ── cenário: arquibancadas (esq./dir.), banners de patrocinadores, árvores, nuvens ──
+    (function envBuild() {
+      const W = vb.width, Hh = vb.height, x0 = vb.x, z0 = vb.y;
+      let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+      const MB = c => new THREE.MeshLambertMaterial({ color: C(c) });
+      // banners de patrocinadores presos à parte interna da cerca
+      const bannerPlane = (len, texKey) => {
+        const tex = sponsorTexture(len);
+        return new THREE.Mesh(new THREE.PlaneGeometry(len, 24), new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide }));
+      };
+      const bt = bannerPlane(W, 'a'); bt.position.set(x0 + W / 2, 20, z0 + 3.6); bt.rotation.y = 0; grp.add(bt);
+      const bb = bannerPlane(W, 'b'); bb.position.set(x0 + W / 2, 20, z0 + Hh - 3.6); bb.rotation.y = Math.PI; grp.add(bb);
+      const bl = bannerPlane(Hh, 'c'); bl.position.set(x0 + 3.6, 20, z0 + Hh / 2); bl.rotation.y = Math.PI / 2; grp.add(bl);
+      const br = bannerPlane(Hh, 'd'); br.position.set(x0 + W - 3.6, 20, z0 + Hh / 2); br.rotation.y = -Math.PI / 2; grp.add(br);
+      // arquibancadas nas duas laterais
+      const ROWS = 6, DEP = 24, STEP = 15, L = Hh + 40, GAP = 34;
+      const cols = [0xff4d6d, 0xffd166, 0x4cc9f0, 0xffffff, 0x80ed99, 0xf72585, 0x9d4edd, 0xf8961e, 0x2a9d8f, 0xe9c46a];
+      const crowd = [];
+      [-1, 1].forEach(sd => {
+        const edgeX = sd < 0 ? x0 - GAP : x0 + W + GAP;
+        for (let i = 0; i < ROWS; i++) {
+          const step = new THREE.Mesh(new THREE.BoxGeometry(DEP, STEP * (i + 1), L), MB(i % 2 ? 0xb9bcc4 : 0xa6a9b2));
+          step.position.set(edgeX + sd * (DEP * (i + 0.5)), STEP * (i + 1) / 2, z0 + Hh / 2); grp.add(step);
+          for (let q = 0; q < Math.floor(L / 13); q++) {
+            if (rnd() < 0.16) continue;
+            crowd.push({ x: edgeX + sd * (DEP * (i + 0.5)) + (rnd() - 0.5) * 5, y: STEP * (i + 1), z: z0 - 20 + q * 13 + (rnd() - 0.5) * 3, r: rnd(), r2: rnd(), r3: rnd(), r4: rnd(), sd });
+          }
+        }
+        // faixa de banner na frente da arquibancada
+        const fb = new THREE.Mesh(new THREE.PlaneGeometry(L, 12), new THREE.MeshBasicMaterial({ map: sponsorTexture(L), side: THREE.DoubleSide }));
+        fb.position.set(edgeX - sd * 0.6, 8, z0 + Hh / 2); fb.rotation.y = sd < 0 ? -Math.PI / 2 : Math.PI / 2; grp.add(fb);
+        // cobertura
+        const roof = new THREE.Mesh(new THREE.BoxGeometry(DEP * ROWS + 14, 3, L + 10), MB(0xe8e8ee));
+        roof.position.set(edgeX + sd * (DEP * ROWS / 2), STEP * ROWS + 62, z0 + Hh / 2); grp.add(roof);
+        [-1, 0, 1].forEach(k => [0.2, 0.95].forEach(fx => {
+          const post = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.4, STEP * ROWS + 62, 6), MB(0x8a8d96));
+          post.position.set(edgeX + sd * (DEP * ROWS * fx), (STEP * ROWS + 62) / 2, z0 + Hh / 2 + k * (L / 2 - 6)); grp.add(post);
+        }));
+      });
+      // público: torso + cabeça + cabelo + braços (alguns torcendo de braços erguidos), cores e tons de pele variados
+      (function people() {
+        const n = crowd.length, M = () => new THREE.MeshLambertMaterial({ color: 0xffffff });
+        const torso = new THREE.InstancedMesh(new THREE.CapsuleGeometry(4.6, 7, 4, 10), M(), n);
+        const head = new THREE.InstancedMesh(new THREE.SphereGeometry(4.2, 12, 9), M(), n);
+        const hair = new THREE.InstancedMesh(new THREE.SphereGeometry(4.5, 12, 8), M(), n);
+        const armL = new THREE.InstancedMesh(new THREE.CapsuleGeometry(1.7, 5.5, 3, 6), M(), n);
+        const armR = new THREE.InstancedMesh(new THREE.CapsuleGeometry(1.7, 5.5, 3, 6), M(), n);
+        const skins = [0xf3cfae, 0xe5b78f, 0xcf9a72, 0xa86f47, 0x7a4a2d, 0x56351f];
+        const hairs = [0x15100c, 0x2a1b12, 0x4a2f1c, 0x7a5430, 0xc9a45c, 0x8a8a8a, 0x1d1d1d];
+        const cloth = [0xe63946, 0x1d3557, 0xf1faee, 0xffb703, 0x2a9d8f, 0x8338ec, 0xff6b6b, 0x3a86ff, 0x06d6a0, 0x222222, 0xf4a261, 0xffffff, 0x0d7a55, 0xcf1fa3, 0x6c757d, 0x8d5a3b];
+        const o = new THREE.Object3D(), cc = new THREE.Color();
+        crowd.forEach((p, k) => {
+          const base = p.y + 0.8, cy = base + 8.4, sd = p.sd;
+          const sc = 0.92 + p.r * 0.2, hairOn = p.r2 > 0.12, up = p.r3 < 0.14;     // ~14% torcendo
+          o.rotation.set(0, 0, 0); o.scale.set(0.9 * sc, sc, 1.38 * sc); o.position.set(p.x, cy, p.z); o.updateMatrix(); torso.setMatrixAt(k, o.matrix);
+          const clothC = cloth[(p.r4 * cloth.length) | 0]; cc.setHex(clothC); torso.setColorAt(k, cc); armL.setColorAt(k, cc); armR.setColorAt(k, cc);
+          o.scale.set(sc, sc * 1.08, sc); o.position.set(p.x, cy + 11.6 * sc, p.z); o.updateMatrix(); head.setMatrixAt(k, o.matrix);
+          cc.setHex(skins[(p.r2 * 977 % 1 * skins.length) | 0]); head.setColorAt(k, cc);
+          o.scale.set(sc, sc * (hairOn ? 0.78 : 0.001), sc); o.position.set(p.x - sd * 0.9, cy + 12.9 * sc, p.z); o.updateMatrix(); hair.setMatrixAt(k, o.matrix);
+          cc.setHex(hairs[(p.r3 * 811 % 1 * hairs.length) | 0]); hair.setColorAt(k, cc);
+          [-1, 1].forEach((side, ai) => {
+            const mesh = ai ? armR : armL;
+            o.scale.set(sc, sc, sc);
+            if (up && (ai === 0 || p.r < 0.5)) { o.position.set(p.x + sd * 1.5, cy + 12.5 * sc, p.z + side * 6.6 * sc); o.rotation.set(side * 0.28, 0, -sd * 0.18); }
+            else { o.position.set(p.x + sd * 1.6, cy + 2.2 * sc, p.z + side * 6.2 * sc); o.rotation.set(0, 0, -sd * 0.45); }
+            o.updateMatrix(); mesh.setMatrixAt(k, o.matrix);
+          });
+        });
+        [torso, head, hair, armL, armR].forEach(m => { m.instanceMatrix.needsUpdate = true; if (m.instanceColor) m.instanceColor.needsUpdate = true; grp.add(m); });
+      })();
+      // billboards grandes atrás das duas laterais sem arquibancada (topo e base)
+      const BW = 290, BH = 126, nb = BILLBOARDS.length;
+      [-1, 1].forEach(sd => {
+        const zc = sd < 0 ? z0 - 150 : z0 + Hh + 150;
+        for (let i = 0; i < nb; i++) {
+          const bx = x0 + W * (i + 0.5) / nb + (sd < 0 ? 0 : 0);
+          const sp = BILLBOARDS[(sd < 0 ? i : nb - 1 - i) % nb];
+          const frame = new THREE.Mesh(new THREE.BoxGeometry(BW + 12, BH + 12, 6), MB(0x22252b)); frame.position.set(bx, 96, zc - sd * 4); grp.add(frame);
+          const face = new THREE.Mesh(new THREE.PlaneGeometry(BW, BH), new THREE.MeshBasicMaterial({ map: billboardTexture(sp) }));
+          face.position.set(bx, 96, zc - sd * 7.2); face.rotation.y = sd < 0 ? 0 : Math.PI; grp.add(face);
+          [-1, 1].forEach(k => { const po = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 40, 6), MB(0x3a3d44)); po.position.set(bx + k * (BW / 2 - 24), 20, zc - sd * 4); grp.add(po); });
+        }
+      });
+      // árvores ao fundo
+      const trunkG = new THREE.CylinderGeometry(5, 7, 60, 7), coneG = new THREE.ConeGeometry(46, 100, 9), ballG = new THREE.IcosahedronGeometry(48, 1);
+      const trunkM = MB(0x5b3a22), greens = [0x2f6b2d, 0x3b7d34, 0x2a5e2a, 0x4a8a3a].map(MB);
+      let placed = 0, guard = 0;
+      while (placed < 90 && guard++ < 900) {
+        const tx = x0 - 1300 + rnd() * (W + 2600), tz = z0 - 1100 + rnd() * (Hh + 2200);
+        if (tx > x0 - 260 && tx < x0 + W + 260 && tz > z0 - 90 && tz < z0 + Hh + 90) continue;   // não invade arena/arquibancadas
+        if (tx > x0 - 40 && tx < x0 + W + 40 && (Math.abs(tz - (z0 - 150)) < 70 || Math.abs(tz - (z0 + Hh + 150)) < 70)) continue;   // nem os billboards
+        const sc = 0.8 + rnd() * 1.1, gm = greens[(rnd() * greens.length) | 0];
+        const t = new THREE.Group();
+        const tr = new THREE.Mesh(trunkG, trunkM); tr.position.y = 30; t.add(tr);
+        if (rnd() < 0.5) { [0, 1].forEach(k => { const c = new THREE.Mesh(coneG, gm); c.position.y = 95 + k * 55; c.scale.setScalar(1 - k * 0.32); t.add(c); }); }
+        else { const bl = new THREE.Mesh(ballG, gm); bl.position.y = 105; t.add(bl); const b2 = new THREE.Mesh(ballG, gm); b2.position.set(22, 85, 10); b2.scale.setScalar(0.7); t.add(b2); }
+        t.scale.setScalar(sc); t.position.set(tx, 0, tz); grp.add(t); placed++;
+      }
+      // nuvens
+      const cm = new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false, transparent: true, opacity: 0.92 });
+      for (let i = 0; i < 10; i++) {
+        const cl = new THREE.Group();
+        for (let k = 0; k < 5; k++) { const p = new THREE.Mesh(new THREE.SphereGeometry(70 + rnd() * 50, 10, 8), cm); p.position.set(k * 90 - 180 + rnd() * 30, rnd() * 25, rnd() * 50); p.scale.y = 0.5; cl.add(p); }
+        cl.position.set(x0 - 2200 + rnd() * (W + 4400), 900 + rnd() * 500, z0 - 2600 + rnd() * (Hh + 5200)); grp.add(cl);
+      }
+    })();
+    // trajeto desenhado no chão (revelado conforme o cavalo avança)
+    const pts = RP.pts, np = pts.length, pos = new Float32Array(np * 6), idx = [];
+    for (let i = 0; i < np; i++) {
+      const a = pts[Math.max(0, i - 1)], b = pts[Math.min(np - 1, i + 1)];
+      let dx = b.x - a.x, dz = b.y - a.y; const l = Math.hypot(dx, dz) || 1; dx /= l; dz /= l;
+      const px = -dz * 2.6, pz = dx * 2.6;
+      pos.set([pts[i].x + px, 0.8, pts[i].y + pz, pts[i].x - px, 0.8, pts[i].y - pz], i * 6);
+    }
+    const tri = [];
+    for (let i = 0; i < np - 1; i++) {
+      if (pts[i + 1]._bridge) { tri.push(0, 0, 0, 0, 0, 0); continue; }       // dedo levantado: sem traço
+      const a = i * 2, b = a + 1, c = a + 2, d = a + 3;
+      tri.push(a, b, c, b, d, c);
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geo.setIndex(tri);
+    POV.ribbon = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0x2563eb, side: THREE.DoubleSide }));
+    POV.ribbon.frustumCulled = false;
+    grp.add(POV.ribbon);
+    // largada
+    const st = new THREE.Mesh(new THREE.ConeGeometry(9, 26, 16), new THREE.MeshLambertMaterial({ color: 0x16a34a }));
+    st.position.set(pts[0].x, 13, pts[0].y); grp.add(st);
+    // marcadores de erro (aparecem quando o cavalo chega neles)
+    POV.mk = [];
+    RV.saved.forEach((m, q) => {
+      const col = m.type === 'double' ? 0xdc2626 : m.type === 'curve' ? 0x2563eb : 0xf59e0b;
+      const mg = new THREE.Group();
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, 44, 6), new THREE.MeshLambertMaterial({ color: 0xffffff }));
+      pole.position.y = 22; mg.add(pole);
+      const ball = new THREE.Mesh(new THREE.SphereGeometry(11, 16, 12), new THREE.MeshLambertMaterial({ color: col, emissive: col, emissiveIntensity: 0.35 }));
+      ball.position.y = 52; mg.add(ball);
+      mg.position.set(m.x, 0, m.y); mg.visible = false; grp.add(mg);
+      POV.mk.push({ g: mg, k: RV.ks[q] });
+    });
+    scene.add(grp);
+    POV.grp = grp; grp.visible = false;
+    // câmera em perspectiva + pescoço/orelhas do cavalo à frente
+    if (!POV.cam) {
+      POV.cam = new THREE.PerspectiveCamera(100, 1.6, 4, 7000);
+      const nk = new THREE.Group();
+      const MM = c => new THREE.MeshLambertMaterial({ color: c });
+      const dark = MM(0x2a1a12);
+      const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
+      const tp = (p1, p2, r1, r2, m, seg) => {
+        const d = new THREE.Vector3().subVectors(p2, p1), len = d.length();
+        const me = new THREE.Mesh(new THREE.CylinderGeometry(r2, r1, len, seg || 8, 1), m);
+        me.position.copy(p1).addScaledVector(d, 0.5);
+        me.quaternion.setFromUnitVectors(V3(0, 1, 0), d.normalize());
+        return me;
+      };
+      // ── pescoço + cabeça: uma única malha suave (seções elípticas ao longo de uma curva) ──
+      // pontos: cernelha → pescoço → nuca → testa → chanfro → focinho;  [x, y, z, raioX, raioY]
+      const KP = [
+        [0, -50, -2, 17, 12], [0, -42, -22, 11.5, 10], [0, -33, -42, 8.2, 8], [0, -25, -57, 6.9, 7],
+        [0, -20.5, -66, 10.6, 8], [0, -22, -76, 11.4, 8.2], [0, -31, -89, 8.4, 7.2], [0, -41, -100, 6.2, 5.8],
+        [0, -47, -107, 4.2, 3.8], [0, -49, -110, 0.5, 0.5]];
+      const curve = new THREE.CatmullRomCurve3(KP.map(k => V3(k[0], k[1], k[2])), false, 'catmullrom', 0.5);
+      const NS = 44, NR = 22, pos = [], col = [], idx = [];
+      const cCoat = new THREE.Color(0x985629), cDark = new THREE.Color(0x66371c), cMuz = new THREE.Color(0x45301f), cLight = new THREE.Color(0xa9652f);
+      for (let i = 0; i <= NS; i++) {
+        const u = i / NS, c = curve.getPoint(u), T = curve.getTangent(u).normalize();
+        const side = V3(1, 0, 0), up = new THREE.Vector3().crossVectors(side, T).normalize();
+        const f = u * (KP.length - 1), k0 = Math.min(KP.length - 2, Math.floor(f)), ft = f - k0;
+        const rx = KP[k0][3] + (KP[k0 + 1][3] - KP[k0][3]) * ft, ry = KP[k0][4] + (KP[k0 + 1][4] - KP[k0][4]) * ft;
+        for (let j = 0; j < NR; j++) {
+          const th = j / NR * Math.PI * 2, cx = Math.cos(th), sy = Math.sin(th);
+          pos.push(c.x + side.x * rx * cx + up.x * ry * sy, c.y + side.y * rx * cx + up.y * ry * sy, c.z + side.z * rx * cx + up.z * ry * sy);
+          const cc = cCoat.clone();
+          if (sy < -0.2) cc.lerp(cDark, Math.min(1, (-0.2 - sy) * 1.4));         // sombra embaixo
+          else if (sy > 0.5) cc.lerp(cLight, (sy - 0.5) * 0.5);                      // brilho em cima
+          if (u > 0.84) cc.lerp(cMuz, Math.min(1, (u - 0.84) / 0.1));               // focinho escuro
+          col.push(cc.r, cc.g, cc.b);
+        }
+      }
+      for (let i = 0; i < NS; i++) for (let j = 0; j < NR; j++) {
+        const a0 = i * NR + j, a1 = i * NR + (j + 1) % NR, b0 = (i + 1) * NR + j, b1 = (i + 1) * NR + (j + 1) % NR;
+        idx.push(a0, b0, a1, a1, b0, b1);
+      }
+      const hg = new THREE.BufferGeometry();
+      hg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      hg.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+      hg.setIndex(idx); hg.computeVertexNormals();
+      nk.add(new THREE.Mesh(hg, new THREE.MeshLambertMaterial({ vertexColors: true, color: 0xd8d8d8, side: THREE.DoubleSide })));
+      // orelhas grandes, bem separadas, em pé e viradas para a frente
+      const earM = MM(0x8a4f27), innM = MM(0x3d2416);
+      [-1, 1].forEach(sd => {
+        const ear = new THREE.Mesh(new THREE.ConeGeometry(5.2, 20, 10), earM);
+        ear.scale.z = 0.55; ear.position.set(sd * 8.4, -9.5, -66.5); ear.rotation.x = -0.32; ear.rotation.z = sd * -0.2; nk.add(ear);
+        const inn = new THREE.Mesh(new THREE.ConeGeometry(3.2, 15, 8), innM);
+        inn.scale.z = 0.4; inn.position.set(sd * 8.2, -9.6, -68.4); inn.rotation.x = -0.32; inn.rotation.z = sd * -0.2; nk.add(inn);
+      });
+      // crina: fios que caem pelo lado direito do pescoço
+      const maneA = MM(0x6f4222), maneB = MM(0xa4723c);
+      for (let i = 0; i < 60; i++) {
+        const t = 0.04 + (i / 59) * 0.38, c = curve.getPoint(t);
+        const f = t * (KP.length - 1), k0 = Math.floor(f), ft = f - k0, ry = KP[k0][4] + (KP[k0 + 1][4] - KP[k0][4]) * ft;
+        const len = 14 + Math.abs(Math.sin(i * 2.1)) * 12, th = -(1.9 + Math.abs(Math.sin(i * 1.3)) * 0.5 + (i % 3) * 0.1);
+        const dir = V3(-Math.sin(th), Math.cos(th), 0.15 * Math.sin(i));
+        const st = new THREE.Mesh(new THREE.ConeGeometry(1.8, len, 5), i % 2 ? maneA : maneB);
+        const base = V3(c.x + 1.2, c.y + ry * 0.95, c.z);
+        st.position.copy(base).addScaledVector(dir, len / 2);
+        st.quaternion.setFromUnitVectors(V3(0, 1, 0), dir.clone().normalize()); nk.add(st);
+      }
+      // topete entre as orelhas
+      for (let i = 0; i < 7; i++) {
+        const st = new THREE.Mesh(new THREE.ConeGeometry(1, 8, 5), i % 2 ? maneA : maneB);
+        const dir = V3((i - 3) * 0.12, -0.55, -0.8).normalize(), base = V3((i - 3) * 1.5, -19.5, -71.5);
+        st.position.copy(base).addScaledVector(dir, 4); st.quaternion.setFromUnitVectors(V3(0, 1, 0), dir); nk.add(st);
+      }
+      // rédeas: da boca às mãos do cavaleiro
+      [-1, 1].forEach(sd => {
+        nk.add(tp(V3(sd * 5.4, -43, -101), V3(sd * 8, -53, -52), 0.5, 0.5, dark, 5));
+        nk.add(tp(V3(sd * 8, -53, -52), V3(sd * 9, -62, -12), 0.5, 0.5, dark, 5));
+      });
+      POV.neck = nk; POV.cam.add(nk); scene.add(POV.cam);
+    }
+    POV.key = svg.getAttribute('viewBox') + '|' + np;
+  }
+  function povFrame() {
+    if (!POV.shown) {
+      POV.shown = true; POV.grp.visible = true; POV.cam.visible = true;
+      scene.fog = new THREE.Fog(0xbcd8ee, 1400, 5200);
+      renderer.setClearColor(0xbcd8ee, 1);
+    }
+    horse.visible = false; girl.visible = false;
+    const cam = POV.cam, f = { x: Math.cos(R.heading), z: Math.sin(R.heading) };
+    cam.aspect = Math.max(0.1, canvas.clientWidth) / Math.max(1, canvas.clientHeight);
+    cam.fov = Math.max(78, Math.min(108, 2 * Math.atan(Math.tan(57 * Math.PI / 180) / cam.aspect) * 180 / Math.PI));   // grande-angular (~114° na horizontal)
+    const sp = Math.min(1, R.speed / 120), bob = Math.sin(R.phase * 2) * 1.6 * sp;
+    cam.position.set(R.x + f.x * 10, EYE_H + bob, R.y + f.z * 10);
+    cam.up.set(0, 1, 0);
+    cam.lookAt(R.x + f.x * 200, EYE_H - 34 + bob * 0.5, R.y + f.z * 200);
+    cam.rotateZ(-Math.max(-0.12, Math.min(0.12, R.turn * 0.05)));   // inclina nas curvas
+    cam.updateProjectionMatrix();
+    // a cabeça acompanha a passada: sobe e desce a cada ciclo de passos (mais forte quanto mais rápido)
+    const nod = Math.min(1, R.speed / 70);
+    POV.neck.rotation.x = Math.sin(R.phase) * 0.085 * nod + Math.sin(R.phase * 2 + 0.8) * 0.02 * nod;
+    POV.neck.position.y = Math.sin(R.phase + 0.5) * 1.4 * nod;
+    // revela trajeto e marcadores
+    const i = idxAtTime(RP.s);
+    POV.ribbon.geometry.setDrawRange(0, Math.max(0, Math.min(i, RP.pts.length - 1)) * 6);
+    POV.mk.forEach(m => { m.g.visible = i >= m.k; });
+  }
+  function setPov(on) {
+    POV.on = on;
+    syncPovFab();
+    if (on && RP.active && R.ok) povBuild();
+    if (!on) povOff();
+  }
+  const povBtn = rpBar.querySelector('#rp-pov');
+  povBtn.addEventListener('click', () => setPov(!POV.on));
+  // botões de visão (barra de controles, barra de tela cheia e barra do replay) ficam sincronizados
+  const povBtns = [povBtn];
+  function addPovBtn(btn) { btn.textContent = L.pov; btn.addEventListener('click', e => { e.stopPropagation(); setPov(!POV.on); }); povBtns.push(btn); syncPovFab(); return btn; }
+  function syncPovFab() {
+    povBtns.forEach(b => { b.textContent = POV.on ? L.top : L.pov; b.classList.toggle('active', POV.on); });
+  }
+
   rpPlay.addEventListener('click', () => {
     if (!RP.active) return;
     if (RP.s >= RP.total - 1e-6) RP.s = 0;           // ↺: recomeça
@@ -5630,6 +6093,9 @@ document.addEventListener('webkitfullscreenchange', () => {
   replayBtn.textContent = L.replay;
   replayBtn.addEventListener('click', startReplay);
   modeBtn.parentNode.insertBefore(replayBtn, modeBtn.nextSibling);
+  const povMain = document.createElement('button'); povMain.id = 'btn-pov';
+  addPovBtn(povMain);
+  replayBtn.parentNode.insertBefore(povMain, replayBtn.nextSibling);
 
   // Tradução dos textos fixos (EN): inicial + qualquer texto que o jogo escreva depois
   if (LANG === 'en' && window.XDOM) {
@@ -5739,7 +6205,8 @@ document.addEventListener('webkitfullscreenchange', () => {
   const fsReplay = document.createElement('button');
   fsReplay.id = 'fs-replay';
   fsReplay.textContent = L.replay;
-  fsBar.appendChild(mkHome('fs-home')); fsBar.appendChild(fsRestart); fsBar.appendChild(fsReplay);
+  const fsPov = document.createElement('button'); fsPov.id = 'fs-pov'; addPovBtn(fsPov);
+  fsBar.appendChild(mkHome('fs-home')); fsBar.appendChild(fsRestart); fsBar.appendChild(fsReplay); fsBar.appendChild(fsPov);
   document.body.appendChild(fsBar);
   fsRestart.addEventListener('click', () => {
     const popup = document.getElementById('popup-overlay');
@@ -5779,12 +6246,10 @@ document.addEventListener('webkitfullscreenchange', () => {
     popReplay.style.display = pathPoints.length >= 2 ? 'inline-block' : 'none';
     gameDone = true;
     if (!errorDQ && R.on && R.ok && R.vis && !RP.active) {
-      // percurso concluído: a cavaleira desmonta e acena; o resultado aparece logo depois
-      const popup = document.getElementById('popup-overlay');
-      popup.classList.remove('visible');
-      startFinish();
-      const tok = FIN.token;
-      setTimeout(() => { if (FIN.on && FIN.token === tok) popup.classList.add('visible'); }, 8600);
+      // percurso concluído: o cavalo segue o dedo/mouse até o ponteiro parar por 3 s; aí a cavaleira desmonta e acena
+      document.getElementById('popup-overlay').classList.remove('visible');
+      POST.on = true; POST.has = false; POST.released = false; POST.last = performance.now();
+      if (!PTR.down) beginFinishSequence();      // dedo já estava fora da tela quando cruzou o último obstáculo
     }
     return out;
   };
@@ -5792,6 +6257,7 @@ document.addEventListener('webkitfullscreenchange', () => {
   window.reset = function () {
     stopReplay();
     gameDone = false;
+    POST.on = false;
     stopFinish();
     return _reset.apply(this, arguments);
   };
@@ -5805,7 +6271,7 @@ document.addEventListener('webkitfullscreenchange', () => {
 
   modeBtn.textContent = L.btn + ': ' + L.off;
   setHorse(true, true);               // PADRÃO: ligado (se houver WebGL)
-  window.__ride = R; window.__rp = RP; window.__startReplay = startReplay;
+  window.__ride = R; window.__rp = RP; window.__startReplay = startReplay; window.__fin = FIN; window.__post = POST;
   window.__setHorse = setHorse;
 })();
 
