@@ -5046,7 +5046,7 @@ document.addEventListener('webkitfullscreenchange', () => {
     FIN.dir = nearRoom >= 170 ? (dr < dl ? 1 : -1) : (dr >= dl ? 1 : -1);   // lateral mais próxima (se couber)
     const room = FIN.dir > 0 ? dr : dl;
     FIN.sp = Math.max(15, Math.min(60, (room - 105) / 4));
-    FIN.t = 0; FIN.frozen = null; FIN.walking = false; FIN.moving = false;
+    FIN.t = 0; FIN.frozen = null; FIN.walking = false; FIN.moving = false; FIN.dist = 0; FIN.px = null;
     const f = { x: Math.cos(R.heading), z: Math.sin(R.heading) };
     FIN.sx = R.x - f.x * 1.7; FIN.sz = R.y - f.z * 1.7;
     FIN.on = true;
@@ -5104,6 +5104,7 @@ document.addEventListener('webkitfullscreenchange', () => {
     // cavaleira: ao lado esquerdo do cavalo, na altura do ombro
     const f = { x: Math.cos(R.heading), z: Math.sin(R.heading) };
     const lx = f.z, lz = -f.x;
+    const _ox = FIN.gx, _oz = FIN.gz;
     if (t < T_WALK) {
       const sh = { x: R.x + lx * 26 + f.x * 24, z: R.y + lz * 26 + f.z * 24 };      // ombro esquerdo
       const fr = { x: R.x + lx * 9 + f.x * 98, z: R.y + lz * 9 + f.z * 98 };         // à frente da cabeça
@@ -5118,6 +5119,8 @@ document.addEventListener('webkitfullscreenchange', () => {
       FIN.gx = FIN.frozen.x; FIN.gz = FIN.frozen.z;
       FIN.yaw = lerpAng(FIN.frozen.yaw, 0, e);             // vira de frente para o usuário (+z)
     }
+    // distância realmente percorrida pelos pés (a passada é amarrada a ela)
+    if (t >= T_DIS && _ox !== undefined && !isNaN(_ox)) FIN.dist += Math.hypot(FIN.gx - _ox, FIN.gz - _oz);
   }
 
   // aplica a pose (chamada a cada quadro, depois do cavalo)
@@ -5135,13 +5138,13 @@ document.addEventListener('webkitfullscreenchange', () => {
     reins.forEach(r => { r.visible = t < T_DIS; });
 
     // pernas / tronco
-    const walkPh = t * Math.PI * 2 * (0.9 + FIN.sp / 60);
+    const walkPh = (FIN.dist || 0) / 78 * Math.PI * 2;   // um ciclo (2 passos) = 78 unidades no chão
     if (t < T_DIS) {
       gLegs.forEach(l => { l.rotation.x = -0.9 * (1 - u); });
       gTorso.rotation.x = 0.22 * (1 - u);
     } else if (FIN.moving) {
-      gLegs[0].rotation.x = Math.sin(walkPh) * 0.55;
-      gLegs[1].rotation.x = -Math.sin(walkPh) * 0.55;
+      gLegs[0].rotation.x = Math.sin(walkPh) * 0.5;
+      gLegs[1].rotation.x = -Math.sin(walkPh) * 0.5;
       gTorso.rotation.x = 0.04;
     } else {
       gLegs.forEach(l => { l.rotation.x *= 0.8; });
