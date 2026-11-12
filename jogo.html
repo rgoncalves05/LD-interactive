@@ -5081,6 +5081,29 @@ document.addEventListener('webkitfullscreenchange', () => {
   replayBtn.addEventListener('click', startReplay);
   modeBtn.parentNode.insertBefore(replayBtn, modeBtn.nextSibling);
 
+  // Duplo toque/clique num percurso = "Jogar agora" (funciona também em celulares
+  // que não disparam o evento dblclick). Evita iniciar duas vezes seguidas.
+  const _startF = window.startFormation;
+  let _lastStart = 0;
+  window.startFormation = function () {
+    const n = Date.now();
+    if (n - _lastStart < 800) return;
+    _lastStart = n;
+    return _startF.apply(this, arguments);
+  };
+  let _tapId = -1, _tapT = 0;
+  document.querySelectorAll('.formation-card').forEach((card, i) => {
+    card.style.touchAction = 'manipulation';
+    card.addEventListener('pointerup', () => {
+      const n = Date.now();
+      if (_tapId === i && n - _tapT < 450) {
+        _tapId = -1;
+        window.selectFormation(i);
+        window.startFormation();
+      } else { _tapId = i; _tapT = n; }
+    });
+  });
+
   // Voltar para a landing page (index.html)
   function goHome() {
     if (typeof drawing !== 'undefined' && drawing && !confirm(L.homeAsk)) return;
