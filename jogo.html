@@ -743,6 +743,97 @@
   }
   .btn-whatsapp:hover { background: #1da851; }
 </style>
+<script>
+/* Idioma compartilhado (landing + jogo): escolha manual > país por IP (guardado) > fuso/idioma do navegador */
+(function () {
+  var K = 'bw_lang', A = 'bw_lang_auto';
+  function ls(k, v) { try { return v === undefined ? localStorage.getItem(k) : localStorage.setItem(k, v); } catch (e) { return null; } }
+  function ok(v) { return v === 'pt' || v === 'en'; }
+  function guess() {
+    try {
+      var tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+      if (/^America\/(Sao_Paulo|Bahia|Fortaleza|Recife|Belem|Manaus|Cuiaba|Campo_Grande|Porto_Velho|Rio_Branco|Boa_Vista|Araguaina|Maceio|Noronha|Santarem|Eirunepe)$/.test(tz)) return 'pt';
+    } catch (e) {}
+    return String(navigator.language || 'en').toLowerCase().indexOf('pt') === 0 ? 'pt' : 'en';
+  }
+  var manual = ls(K), auto = ls(A);
+  var BW = window.BW = { lang: ok(manual) ? manual : ok(auto) ? auto : guess(), onchange: null };
+  BW.set = function (l) { if (!ok(l)) return; ls(K, l); BW.lang = l; };
+  BW.flags = {
+    pt: '<svg viewBox="0 0 30 21" width="30" height="21" aria-hidden="true"><rect width="30" height="21" fill="#009b3a"/><polygon points="15,2.2 27.5,10.5 15,18.8 2.5,10.5" fill="#fedf00"/><circle cx="15" cy="10.5" r="4.7" fill="#002776"/><path d="M10.6 9.6 Q15 8.2 19.4 11.6" stroke="#fff" stroke-width="1" fill="none"/></svg>',
+    en: '<svg viewBox="0 0 30 21" width="30" height="21" aria-hidden="true"><rect width="30" height="21" fill="#fff"/><g fill="#b22234"><rect y="0" width="30" height="3"/><rect y="6" width="30" height="3"/><rect y="12" width="30" height="3"/><rect y="18" width="30" height="3"/></g><rect width="13" height="12" fill="#3c3b6e"/><g fill="#fff"><circle cx="2.5" cy="2.2" r=".7"/><circle cx="6.5" cy="2.2" r=".7"/><circle cx="10.5" cy="2.2" r=".7"/><circle cx="4.5" cy="5.2" r=".7"/><circle cx="8.5" cy="5.2" r=".7"/><circle cx="2.5" cy="8.2" r=".7"/><circle cx="6.5" cy="8.2" r=".7"/><circle cx="10.5" cy="8.2" r=".7"/></g></svg>'
+  };
+  if (!ok(manual) && typeof fetch === 'function') {
+    var apply = function (c) {
+      if (!c) return false;
+      var l = String(c).trim().toUpperCase() === 'BR' ? 'pt' : 'en';
+      ls(A, l);
+      if (!ok(ls(K)) && l !== BW.lang) { BW.lang = l; if (BW.onchange) BW.onchange(l); }
+      return true;
+    };
+    var get = function (url, pick) {
+      var ctl = (typeof AbortController === 'function') ? new AbortController() : null;
+      var to = setTimeout(function () { if (ctl) ctl.abort(); }, 2500);
+      return fetch(url, { cache: 'no-store', signal: ctl ? ctl.signal : undefined })
+        .then(function (r) { clearTimeout(to); return r.ok ? pick(r) : null; })
+        .catch(function () { clearTimeout(to); return null; });
+    };
+    get('https://api.country.is/', function (r) { return r.json().then(function (j) { return j && j.country; }); })
+      .then(function (c) { if (!apply(c)) return get('https://ipapi.co/country/', function (r) { return r.text(); }).then(apply); });
+  }
+})();
+
+/* Tradução PT→EN dos textos fixos do jogo que não passam pelo dicionário i18n original */
+(function () {
+  var M = {
+    'Escolha o percurso e comece a treinar': 'Choose a course and start training',
+    '▶ Jogar agora': '▶ Play now', '← Voltar': '← Back', 'Voltar': 'Back',
+    '✏️ Alterar obstáculos': '✏️ Edit obstacles', '✅ Alteração finalizada': '✅ Editing done',
+    '🔄 Rotação': '🔄 Rotate', '✅ Confirmar rotação': '✅ Confirm rotation',
+    'Voltar à formação original': 'Back to the original layout',
+    '↺ Jogar novamente': '↺ Play again', '↺ Recomeçar': '↺ Restart',
+    'Não': 'No', 'Sim ✖': 'Yes ✖',
+    'Role a página para baixo para ver o seu resultado detalhado 👇': 'Scroll down to see your detailed result 👇',
+    'Ver resultado ↓': 'See result ↓', 'Fechar': 'Close', 'Compartilhar no WhatsApp': 'Share on WhatsApp', '📥 Imagem salva!': '📥 Image saved!', 'Abra o WhatsApp e envie a imagem': 'Open WhatsApp and send the image', 'que foi salva na sua galeria.': 'that was saved to your gallery.', '🏟 Piso': '🏟 Surface', 'Tempo ajustado': 'Adjusted time', 'Tempo real': 'Real time', 'Erros': 'Errors', 'Medalha': 'Medal', '📲 Compartilhar no WhatsApp': '📲 Share on WhatsApp', 'Areia': 'Sand', 'Grama': 'Grass',
+    '📋 Histórico': '📋 History', '🏆 Melhor tempo ajustado:': '🏆 Best adjusted time:',
+    'Cruzamento duplo': 'Double crossing', 'Curva brusca': 'Sharp turn', 'Parada ilegal': 'Illegal stop',
+    'Ângulo errado': 'Wrong angle', 'Percurso interrompido': 'Course interrupted',
+    'Desclassificado (>100°)': 'Disqualified (>100°)',
+    'Cruzamento duplo!': 'Double crossing!', 'Curva brusca!': 'Sharp turn!', 'Parada ilegal!': 'Illegal stop!',
+    'Ângulo de chegada!': 'Approach angle!', 'Fora do centro!': 'Off-center!', 'Percurso interrompido!': 'Course interrupted!',
+    'Vel. excessiva!': 'Excess speed!', 'Desclassificado!': 'Disqualified!', 'Velocidade excessiva!': 'Excessive speed!',
+    'Início inválido!': 'Invalid start!', 'Curva fechada!': 'Tight turn!', 'Curva acentuada ilegal!': 'Illegal sharp turn!',
+    '🚫 DESCLASSIFICADO — curva proibida': '🚫 DISQUALIFIED — forbidden turn',
+    'Trace o percurso pelos 4 obstáculos, desenhando um trevo de quatro folhas, traçando cada folha apenas UMA vez, chegando sempre de frente no obstáculo, e podendo saltar mais de uma vez cada obstáculo.': 'Trace the course through the 4 obstacles, drawing a four-leaf clover, tracing each leaf only ONCE, always approaching the obstacle head-on, and being allowed to jump each obstacle more than once.',
+    '⏱ Tempo ajustado': '⏱ Adjusted time', '⏱ Tempo real': '⏱ Real time', '📏 Comprimento': '📏 Length',
+    '⚠️ Erros totais': '⚠️ Total errors', '✋ Interrompido': '✋ Interrupted', '🔵 Vel. máxima': '🔵 Max speed', '🔴 Vel. mínima': '🔴 Min speed'
+  };
+  var RX = [
+    [/^🔴 (\d+) duplo$/, '🔴 $1 double'], [/^🔵 (\d+) curva$/, '🔵 $1 turn'], [/^🟠 (\d+) parada$/, '🟠 $1 stop'],
+    [/^🟣 (\d+) ângulo$/, '🟣 $1 angle'], [/^🟫 (\d+) centro$/, '🟫 $1 center'], [/^✋ (\d+) interrompido$/, '✋ $1 interrupted'],
+    [/^⚡ (\d+) vel\.$/, '⚡ $1 speed'], [/^↩ (\d+) loop$/, '↩ $1 loop']
+  ];
+  function tr(s) {
+    var k = String(s).trim();
+    if (!k) return s;
+    var out = null;
+    if (Object.prototype.hasOwnProperty.call(M, k)) out = M[k];
+    else for (var i = 0; i < RX.length; i++) if (RX[i][0].test(k)) { out = k.replace(RX[i][0], RX[i][1]); break; }
+    return out === null ? s : String(s).replace(k, out);
+  }
+  window.X = function (s) { return (window.BW && BW.lang === 'en' && typeof s === 'string') ? tr(s) : s; };
+  window.XDOM = function (root) {
+    if (!(window.BW && BW.lang === 'en')) return;
+    var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null), n, list = [];
+    while ((n = w.nextNode())) list.push(n);
+    list.forEach(function (t) { var v = tr(t.nodeValue); if (v !== t.nodeValue) t.nodeValue = v; });
+    (root.querySelectorAll ? root.querySelectorAll('[title],[aria-label]') : []).forEach(function (e) {
+      ['title', 'aria-label'].forEach(function (a) { var v = e.getAttribute(a); if (v) { var t = tr(v); if (t !== v) e.setAttribute(a, t); } });
+    });
+  };
+})();
+
+</script>
 <style>
 /* ── Modo cavalo 3D (ride mode) ───────────────────────────── */
 #ride-canvas {
@@ -815,21 +906,25 @@ body.rp-fs #fs-topbar { display: flex; }
 /* ── Replay ── */
 #replay-bar {
   display: none;
-  position: absolute;
-  left: 8px;
-  right: 8px;
-  bottom: 8px;
+  position: relative;
+  width: 100%;
+  margin: 10px 0 0;
   z-index: 6;
   padding: 8px 10px;
   border-radius: 14px;
-  background: rgba(20, 24, 30, 0.72);
+  background: rgba(20, 24, 30, 0.86);
   color: #fff;
   line-height: 1.2;
   font-family: 'DM Sans', sans-serif;
-  backdrop-filter: blur(4px);
   user-select: none;
   -webkit-user-select: none;
 }
+#replay-bar.on { display: block; }
+/* Em tela cheia: barra fixa na base e o campo encolhe para não ficar coberto */
+body.rp-fs #replay-bar { position: fixed; left: 0; right: 0; bottom: 0; width: auto; margin: 0; border-radius: 14px 14px 0 0; z-index: 9300; padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)); }
+body.rp-fs.rp-bar .canvas-wrap.fs-active { inset: 0 0 108px 0; height: auto; width: 100vw; }
+body.rp-fs.rp-bar .canvas-wrap.fs-active #board-wrap,
+body.rp-fs.rp-bar .canvas-wrap.fs-active #board { max-height: calc(100dvh - 108px); }
 #replay-bar .rp-row { display: flex; align-items: center; gap: 8px; }
 #replay-bar .rp-speeds { margin-top: 8px; justify-content: center; }
 #replay-bar button {
@@ -847,6 +942,44 @@ body.rp-fs #fs-topbar { display: flex; }
 #replay-bar .rp-spd.active { background: #0d7a55; border-color: #7ef0bf; }
 #rp-seek { flex: 1; min-width: 0; accent-color: #0d7a55; touch-action: pan-x; }
 #rp-time { font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* ── Seletor de idioma ── */
+#bw-lang { position: fixed; top: calc(12px + env(safe-area-inset-top, 0px)); right: calc(12px + env(safe-area-inset-right, 0px)); z-index: 9000; display: flex; gap: 6px; }
+#bw-lang button { padding: 3px; width: 40px; height: 29px; border-radius: 7px; border: 2px solid transparent; background: rgba(255,255,255,.85); cursor: pointer; opacity: .55; line-height: 0; display: flex; align-items: center; justify-content: center; }
+#bw-lang button svg { width: 30px; height: 21px; border-radius: 2px; }
+#bw-lang button.on { opacity: 1; border-color: #0d7a55; }
+body.rp-fs #bw-lang { display: none; }
+
+/* ── Layout compacto no celular ── */
+@media (max-width: 640px) {
+  body { padding: 8px 8px 28px; gap: 8px; }
+  #page-game .title-row { padding: 8px 10px 8px 16px; gap: 6px 8px; }
+  #page-game .title-row > div:first-child { min-width: 0 !important; flex: 1 1 100% !important; gap: 0 !important; }
+  #page-game .title-row h1 { font-size: 1.02rem; line-height: 1.15; letter-spacing: 0.01em; padding-right: 78px; }
+  #page-game .title-row h1 span { white-space: normal; }
+  #page-game .title-row #formation-name-header { font-size: 0.8rem !important; }
+  #page-game .title-row .subtitle { display: none; }
+  #page-game .title-row > div:last-child { flex-direction: row !important; align-items: center !important; flex-wrap: wrap; gap: 6px 8px !important; width: 100%; }
+  #page-game .title-row button { padding: 5px 10px !important; font-size: 0.8rem !important; }
+  #page-game .title-row .toggle-wrap { margin-left: auto; font-size: 0.8rem; }
+  #game-area > div { gap: 8px !important; }
+  .canvas-wrap { max-width: 100%; }
+  #page-game .controls { padding: 6px 8px; gap: 6px; border-radius: 10px; }
+  #page-game .controls button { padding: 6px 9px; font-size: 0.78rem; }
+  #page-game .controls #status, #page-game .controls #timer-display { font-size: 0.78rem; }
+  #bw-lang { top: 6px; right: 6px; }
+  #bw-lang button { width: 34px; height: 25px; }
+  #bw-lang button svg { width: 24px; height: 17px; }
+  #ride-badge { font-size: 0.72rem; padding: 4px 8px; }
+}
+
+/* ── Balão de fala da cavaleira ── */
+#fin-bubble { position: absolute; z-index: 5; transform: translate(-50%, -100%) scale(.6); transform-origin: 50% 100%; opacity: 0; pointer-events: none;
+  background: #fff; color: #1a2a22; font: 700 15px 'DM Sans', sans-serif; line-height: 1; padding: 9px 14px; border-radius: 16px;
+  box-shadow: 0 3px 10px rgba(0,0,0,.25); white-space: nowrap; transition: opacity .25s ease, transform .25s ease; }
+#fin-bubble.on { opacity: 1; transform: translate(-50%, -100%) scale(1); }
+#fin-bubble::after { content: ''; position: absolute; left: calc(50% + var(--tail, 0px)); bottom: -8px; width: 14px; height: 14px; background: #fff;
+  transform: translateX(-50%) rotate(45deg); border-radius: 0 0 4px 0; box-shadow: 3px 3px 5px rgba(0,0,0,.12); }
 
 </style>
 </head>
@@ -1592,31 +1725,31 @@ function svgLog(log) {
 
 // 🔴 Triangle — double crossing
 function drawErrorDouble(x, y) {
-  _errorMarkers.push({type:'double', x, y, label:'Cruzamento duplo!'});
+  _errorMarkers.push({_i:pathPoints.length,type:'double', x, y, label:'Cruzamento duplo!'});
   redrawAll();
 }
 
 // 🔵 Circle — sharp curve
 function drawErrorCurve(x, y) {
-  _errorMarkers.push({type:'curve', x, y, label:'Curva brusca!'});
+  _errorMarkers.push({_i:pathPoints.length,type:'curve', x, y, label:'Curva brusca!'});
   redrawAll();
 }
 
 // 🟠 Square — illegal stop
 function drawErrorStop(x, y) {
-  _errorMarkers.push({type:'stop', x, y, label:'Parada ilegal!'});
+  _errorMarkers.push({_i:pathPoints.length,type:'stop', x, y, label:'Parada ilegal!'});
   redrawAll();
 }
 
 // ◆ Diamond — bad approach angle
 function drawErrorAngle(x, y) {
-  _errorMarkers.push({type:'angle', x, y, label:'Ângulo de chegada!'});
+  _errorMarkers.push({_i:pathPoints.length,type:'angle', x, y, label:'Ângulo de chegada!'});
   redrawAll();
 }
 
 // ◈ Hexagon — crossed outside central third of obstacle (+3s)
 function drawErrorCenter(x, y) {
-  _errorMarkers.push({type:'center', x, y, label:'Fora do centro!'});
+  _errorMarkers.push({_i:pathPoints.length,type:'center', x, y, label:'Fora do centro!'});
   redrawAll();
 }
 function soundCenter() {
@@ -1635,13 +1768,13 @@ function soundCenter() {
 
 // ✋ Pentagon — lifted finger (interrupted path)
 function drawErrorLift(x, y) {
-  _errorMarkers.push({type:'lift', x, y, label:'Percurso interrompido!'});
+  _errorMarkers.push({_i:pathPoints.length,type:'lift', x, y, label:'Percurso interrompido!'});
   redrawAll();
 }
 
 // 🔁 Loop — path crosses itself after last obstacle
 function drawErrorLoop(x, y) {
-  _errorMarkers.push({type:'loop', x, y, label:'Loop!'});
+  _errorMarkers.push({_i:pathPoints.length,type:'loop', x, y, label:'Loop!'});
   redrawAll();
 }
 function soundLoop() {
@@ -1734,7 +1867,7 @@ function checkLoop(p) {
 
 // ⚡ Octagon — excessive speed
 function drawErrorSpeed(x, y) {
-  _errorMarkers.push({type:'speed', x, y, label:'Vel. excessiva!'});
+  _errorMarkers.push({_i:pathPoints.length,type:'speed', x, y, label:'Vel. excessiva!'});
   redrawAll();
 }
 function soundSpeed() {
@@ -2010,7 +2143,7 @@ function checkSharpCurve() {
     }
     lastCurveErrorPt = {x:p2.x, y:p2.y};
     errorDQ = true;
-    _errorMarkers.push({type:'dq', x:p2.x, y:p2.y, label:'Desclassificado!'});
+    _errorMarkers.push({_i:pathPoints.length,type:'dq', x:p2.x, y:p2.y, label:'Desclassificado!'});
     soundDQ();
     updateErrorsLive();
     redrawAll();
@@ -2073,7 +2206,7 @@ function checkSpeedDQ(p) {
     _speedDQViolations++;
     if(_speedDQViolations >= 3) { // 3 amostras consecutivas = velocidade sustentada
       errorDQ = true;
-      _errorMarkers.push({type:'dq', x:p.x, y:p.y, label:'Velocidade excessiva!'});
+      _errorMarkers.push({_i:pathPoints.length,type:'dq', x:p.x, y:p.y, label:'Velocidade excessiva!'});
       soundDQ();
       updateErrorsLive();
       redrawAll();
@@ -2150,7 +2283,7 @@ function startDraw(e) {
     // ── Shamrock: DQ se começar dentro do quadrado ────────
     if(isShamrock() && shamrockPointInsideSquare(p.x, p.y)) {
       errorDQ = true;
-      _errorMarkers.push({type:'dq', x:p.x, y:p.y, label:'Início inválido!'});
+      _errorMarkers.push({_i:pathPoints.length,type:'dq', x:p.x, y:p.y, label:'Início inválido!'});
       soundDQ();
       updateErrorsLive();
       redrawAll();
@@ -2226,7 +2359,7 @@ function checkCrossings(p) {
         if(!shamrockCheckCrossing(log.id, entryPt, p)) {
           // DQ — saiu pelo obstáculo errado
           errorDQ = true;
-          _errorMarkers.push({type:'dq', x:p.x, y:p.y, label:'Curva fechada!'});
+          _errorMarkers.push({_i:pathPoints.length,type:'dq', x:p.x, y:p.y, label:'Curva fechada!'});
           soundDQ(); updateErrorsLive(); redrawAll();
           setTimeout(finishGame, 600);
           return;
@@ -2246,7 +2379,7 @@ function checkCrossings(p) {
         const segMeters = segDist * METERS_PER_PX;
         if(segMeters < 9.0) {
           errorDQ = true;
-          _errorMarkers.push({type:'dq', x:p.x, y:p.y, label:'Curva acentuada ilegal!'});
+          _errorMarkers.push({_i:pathPoints.length,type:'dq', x:p.x, y:p.y, label:'Curva acentuada ilegal!'});
           soundDQ(); updateErrorsLive(); redrawAll();
           setTimeout(finishGame, 600);
           lastCrossIdx = curIdx;
@@ -2883,13 +3016,13 @@ async function shareResult() {
     });
     showErrorLabels = savedShowLabels;
     const stats = [
-      ['⏱ Tempo ajustado', document.getElementById('s-adj-time').textContent],
-      ['⏱ Tempo real',     document.getElementById('s-time').textContent],
-      ['📏 Comprimento',   document.getElementById('s-distance').textContent],
-      ['⚠️ Erros totais',  document.getElementById('s-total-errors').textContent],
-      ['✋ Interrompido',   document.getElementById('s-lift').textContent],
-      ['🔵 Vel. máxima',   document.getElementById('s-vmax').textContent],
-      ['🔴 Vel. mínima',   document.getElementById('s-vmin').textContent],
+      [X('⏱ Tempo ajustado'), document.getElementById('s-adj-time').textContent],
+      [X('⏱ Tempo real'),     document.getElementById('s-time').textContent],
+      [X('📏 Comprimento'),   document.getElementById('s-distance').textContent],
+      [X('⚠️ Erros totais'),  document.getElementById('s-total-errors').textContent],
+      [X('✋ Interrompido'),   document.getElementById('s-lift').textContent],
+      [X('🔵 Vel. máxima'),   document.getElementById('s-vmax').textContent],
+      [X('🔴 Vel. mínima'),   document.getElementById('s-vmin').textContent],
     ];
 
     // Filter out stats that are still '—' (e.g. speed if path too short)
@@ -3393,7 +3526,7 @@ function startFormation() {
   const subEl = document.getElementById('game-subtitle');
   if (subEl) {
     if (isShamrock()) {
-      subEl.textContent = 'Trace o percurso pelos 4 obstáculos, desenhando um trevo de quatro folhas, traçando cada folha apenas UMA vez, chegando sempre de frente no obstáculo, e podendo saltar mais de uma vez cada obstáculo.';
+      subEl.textContent = X('Trace o percurso pelos 4 obstáculos, desenhando um trevo de quatro folhas, traçando cada folha apenas UMA vez, chegando sempre de frente no obstáculo, e podendo saltar mais de uma vez cada obstáculo.');
     } else {
       subEl.innerHTML = subEl.innerHTML
         .replace(/pelos \d+ obstáculos/, `pelos ${NUM_LOGS} obstáculos`)
@@ -3974,10 +4107,8 @@ attachListeners(); // also try immediately
 // ══════════════════════════════════════════════════════════════
 // i18n — PT (Brazil) / EN (everywhere else)
 // ══════════════════════════════════════════════════════════════
-const LANG = (() => {
-  const lang = (navigator.language || navigator.userLanguage || 'en').toLowerCase();
-  return lang.startsWith('pt') ? 'pt' : 'en';
-})();
+const LANG = (window.BW && window.BW.lang) || ((navigator.language||'en').toLowerCase().startsWith('pt') ? 'pt' : 'en');
+document.documentElement.lang = LANG === 'pt' ? 'pt-BR' : 'en';
 
 const i18n = {
   pt: {
@@ -4492,7 +4623,8 @@ document.addEventListener('webkitfullscreenchange', () => {
 
   // ═══════════════ 3D (Three.js) ═══════════════
   let renderer, scene, camera, horse, canvas;
-  let legs = [], tail, body, riderTorso, rider;
+  let legs = [], tail, body, riderTorso, rider, reins = [];
+  let girl, gArmR, gForeR, gArmL, gLegs = [], gTorso, gHead, gShadow;
 
   function initGL() {
     if (R.ok) return true;
@@ -4518,6 +4650,9 @@ document.addEventListener('webkitfullscreenchange', () => {
     camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 4000);
     horse = buildHorse();
     scene.add(horse);
+    girl = buildGirl();
+    girl.visible = false;
+    scene.add(girl);
 
     R.ok = true;
     return true;
@@ -4531,7 +4666,7 @@ document.addEventListener('webkitfullscreenchange', () => {
       coat: M(0x8f4f2b), dark: M(0x2a1a12), muzzle: M(0x4a3226), blaze: M(0xf1ece0),
       pad: M(0xf6f3ea), saddle: M(0x5b3a22), jacket: M(0xcf1fa3), skin: M(0xe8b98f),
       breech: M(0xf1eee4), boot: M(0x161616), helmet: M(0x101010), hoof: M(0x1b1b1b),
-      rein: M(0x2a2a2a), eye: M(0x050505)
+      rein: M(0x2a2a2a), eye: M(0x050505), hair: M(0x3a2414)
     };
     const V = (x, y, z) => new THREE.Vector3(x, y, z);
 
@@ -4612,12 +4747,25 @@ document.addEventListener('webkitfullscreenchange', () => {
     rider = new THREE.Group();
     rider.position.set(-2, 80, 0);
     body.add(rider);
+    // Sela e manta ficam no CAVALO (continuam lá quando a cavaleira desmonta)
+    const tack = new THREE.Group();
+    tack.position.set(-2, 84, 0);
+    body.add(tack);
     const pad = new THREE.Mesh(new THREE.BoxGeometry(30, 2, 22), mat.pad);
     pad.position.y = 0.5;
-    rider.add(pad);
+    tack.add(pad);
     const seat = new THREE.Mesh(new THREE.BoxGeometry(24, 5, 15), mat.saddle);
     seat.position.y = 4;
-    rider.add(seat);
+    tack.add(seat);
+    [-1, 1].forEach(sd => {
+      const flap = new THREE.Mesh(new THREE.BoxGeometry(16, 11, 1.6), mat.saddle);   // aba lateral
+      flap.position.set(3, -3, sd * 9.8);
+      tack.add(flap);
+      tack.add(taper(V(2, -8, sd * 10.4), V(2, -14, sd * 10.4), 0.8, 0.8, mat.rein, 4));   // barrigueira
+    });
+    const cantle = new THREE.Mesh(new THREE.BoxGeometry(5, 4, 14), mat.saddle);   // borrelete
+    cantle.position.set(-10, 7, 0);
+    tack.add(cantle);
 
     riderTorso = new THREE.Group();
     riderTorso.position.set(0, 8, 0);
@@ -4631,6 +4779,8 @@ document.addEventListener('webkitfullscreenchange', () => {
     const brim = new THREE.Mesh(new THREE.BoxGeometry(6, 1, 9), mat.helmet);
     brim.position.set(6.5, 31.5, 0);
     riderTorso.add(brim);
+    riderTorso.add(ball(4.6, mat.hair, -3.5, 28.8, 0));
+    riderTorso.add(taper(V(-5, 29, 0), V(-15.5, 19, 0), 2.4, 1.1, mat.hair, 6));
     [-1, 1].forEach(s => {
       riderTorso.add(taper(V(0, 18, s * 9), V(14, 3, s * 6.5), 3.2, 2.6, mat.jacket, 7));
       riderTorso.add(ball(2.6, mat.skin, 14.5, 2.5, s * 6.5));
@@ -4647,7 +4797,8 @@ document.addEventListener('webkitfullscreenchange', () => {
 
     // rédeas (da mão até a boca)
     [-1, 1].forEach(s => {
-      body.add(taper(V(16, 88, s * 6.5), V(79, 84.5, s * 3.2), 0.7, 0.7, mat.rein, 4));
+      const rn = taper(V(16, 88, s * 6.5), V(79, 84.5, s * 3.2), 0.7, 0.7, mat.rein, 4);
+      body.add(rn); reins.push(rn);
     });
 
     // sombra suave no chão
@@ -4790,6 +4941,253 @@ document.addEventListener('webkitfullscreenchange', () => {
     rider.position.y = 84 + Math.abs(Math.sin(bobA * 0.5 + 0.6)) * gp.b * 0.5;
   }
 
+
+  // Cavaleira em pé (para desmontar e acenar). Olha para +z (para o usuário).
+  function buildGirl() {
+    const root = new THREE.Group();
+    const M = c => new THREE.MeshLambertMaterial({ color: c });
+    const m = { jacket: M(0xcf1fa3), skin: M(0xe8b98f), breech: M(0xf1eee4), boot: M(0x161616), helmet: M(0x101010), hair: M(0x3a2414) };
+    const V = (x, y, z) => new THREE.Vector3(x, y, z);
+    function taper(p1, p2, r1, r2, mt, seg) {
+      const d = new THREE.Vector3().subVectors(p2, p1);
+      const mesh = new THREE.Mesh(new THREE.CylinderGeometry(r2, r1, d.length(), seg || 8, 1), mt);
+      mesh.position.copy(p1).addScaledVector(d, 0.5);
+      mesh.quaternion.setFromUnitVectors(V(0, 1, 0), d.normalize());
+      return mesh;
+    }
+    function ball(r, mt, x, y, z, sx, sy, sz) {
+      const b = new THREE.Mesh(new THREE.SphereGeometry(r, 12, 9), mt);
+      b.position.set(x, y, z);
+      if (sx) b.scale.set(sx, sy, sz);
+      return b;
+    }
+    // pernas (esquerda dela = +x)
+    gLegs = [];
+    [1, -1].forEach(sd => {
+      const hip = new THREE.Group();
+      hip.position.set(sd * 6.5, 42, 0);
+      hip.add(taper(V(0, 0, 0), V(0, -21, 0), 5.2, 4.4, m.breech, 8));
+      hip.add(taper(V(0, -17, 0), V(0, -41, 0), 4.5, 3.6, m.boot, 8));
+      const foot = new THREE.Mesh(new THREE.BoxGeometry(6.4, 3, 10.5), m.boot);
+      foot.position.set(0, -40.8, 2.2);
+      hip.add(foot);
+      root.add(hip); gLegs.push(hip);
+    });
+    // tronco
+    gTorso = new THREE.Group();
+    gTorso.position.set(0, 42, 0);
+    root.add(gTorso);
+    gTorso.add(ball(7.2, m.breech, 0, 0, 0, 1.1, 0.7, 0.9));
+    gTorso.add(taper(V(0, 0, 0), V(0, 24, 0), 6.6, 7.8, m.jacket, 10));
+    gTorso.add(ball(7.6, m.jacket, 0, 23.5, 0, 1.12, 0.62, 0.85));
+    gTorso.add(taper(V(0, 25, 0), V(0, 30.5, 0), 2.5, 2.3, m.skin, 8));
+    // cabeça num grupo próprio (pivô no pescoço) para poder olhar para cima
+    gHead = new THREE.Group();
+    gHead.position.set(0, 31, 0);
+    gTorso.add(gHead);
+    gHead.add(ball(5.9, m.skin, 0, 4.5, 0.6));
+    const helm = new THREE.Mesh(new THREE.SphereGeometry(6.9, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), m.helmet);
+    helm.position.set(0, 5.2, 0);
+    gHead.add(helm);
+    const brim = new THREE.Mesh(new THREE.BoxGeometry(9, 1, 6), m.helmet);
+    brim.position.set(0, 4.8, 6.6);
+    gHead.add(brim);
+    gHead.add(ball(4.6, m.hair, 0, 2.5, -4.2));
+    gHead.add(taper(V(0, 3, -5), V(0, -9, -9.5), 2.4, 1.1, m.hair, 6));
+    // braços
+    function arm(sd) {
+      const sh = new THREE.Group();
+      sh.position.set(sd * 9.2, 23.5, 0);
+      sh.add(taper(V(0, 0, 0), V(0, -14, 0), 3.1, 2.7, m.jacket, 8));
+      sh.add(ball(3.1, m.jacket, 0, 0, 0));
+      const fore = new THREE.Group();
+      fore.position.set(0, -14, 0);
+      fore.add(taper(V(0, 0, 0), V(0, -13, 0), 2.6, 2.1, m.jacket, 8));
+      fore.add(ball(2.7, m.skin, 0, -14.2, 0));
+      sh.add(fore);
+      gTorso.add(sh);
+      return { sh, fore };
+    }
+    const aL = arm(1), aR = arm(-1);          // esquerda dela = +x; direita dela = -x
+    gArmL = aL.sh; gArmR = aR.sh; gForeR = aR.fore;
+    gArmL.rotation.z = 0.12; gArmR.rotation.z = -0.12;
+    gShadow = new THREE.Mesh(new THREE.CircleGeometry(1, 24),
+      new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.22, depthWrite: false }));
+    gShadow.rotation.x = -Math.PI / 2;
+    gShadow.scale.set(17, 10, 1);
+    gShadow.position.set(0, 0.3, 0);
+    root.add(gShadow);
+    root.scale.setScalar(HORSE_SCALE);
+    return root;
+  }
+
+  // ── Fim do percurso ─────────────────────────────────────────────
+  // A cavaleira desmonta, tira as rédeas pela cabeça do cavalo, leva-o pela rédea
+  // em direção à lateral do picadeiro (4 s), para, vira de frente para o usuário,
+  // levanta a mão direita e acena.
+  const T_DIS = 0.8, T_REIN = 1.4, T_WALK = 5.4, T_TURN = 6.0;
+  const FIN = { on: false, t: 0, token: 0, dir: 1, sp: 40, sx: 0, sz: 0, gx: 0, gz: 0, yaw: 0, y0: 42, frozen: null, walking: false, moving: false };
+  let leash = null;
+  function ensureLeash() {
+    if (leash) return;
+    leash = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 1, 5, 1), new THREE.MeshLambertMaterial({ color: 0x1c1c1c }));
+    leash.visible = false;
+    scene.add(leash);
+  }
+  function lerpAng(a, b, u) { return a + angDiff(b, a) * u; }
+
+  function startFinish(instant) {
+    if (!R.ok || !R.vis || !girl) return;
+    ensureLeash();
+    const vb = svg.viewBox.baseVal;
+    const dl = R.x - vb.x, dr = vb.x + vb.width - R.x;
+    const nearRoom = Math.min(dl, dr);
+    FIN.dir = nearRoom >= 170 ? (dr < dl ? 1 : -1) : (dr >= dl ? 1 : -1);   // lateral mais próxima (se couber)
+    const room = FIN.dir > 0 ? dr : dl;
+    FIN.sp = Math.max(15, Math.min(60, (room - 105) / 4));
+    FIN.t = 0; FIN.frozen = null; FIN.walking = false; FIN.moving = false;
+    const f = { x: Math.cos(R.heading), z: Math.sin(R.heading) };
+    FIN.sx = R.x - f.x * 1.7; FIN.sz = R.y - f.z * 1.7;
+    FIN.on = true;
+    rider.visible = false;
+    girl.visible = true;
+    stepFinish(0);
+    if (instant) { for (let i = 0; i < 170; i++) stepFinish(0.05); }
+  }
+  // balão de fala (HTML sobre o campo) — "That was fun!"
+  const bubble = document.createElement('div');
+  bubble.id = 'fin-bubble';
+  bubble.textContent = 'That was fun!';
+  wrap.appendChild(bubble);
+  function updateBubble() {
+    const show = FIN.on && R.vis && FIN.t >= T_TURN + 0.35;
+    if (!show) { bubble.classList.remove('on'); return; }
+    const hp = girl.localToWorld(new THREE.Vector3(0, 98, 0)).project(camera);
+    const cw = canvas.clientWidth, ch = canvas.clientHeight;
+    let x = parseFloat(canvas.style.left || '0') + (hp.x + 1) / 2 * cw;
+    const y = parseFloat(canvas.style.top || '0') + (1 - hp.y) / 2 * ch;
+    const half = bubble.offsetWidth / 2 + 6;
+    const lo = half, hi = wrap.clientWidth - half;
+    const cx = Math.max(lo, Math.min(hi, x));
+    bubble.style.left = cx + 'px';
+    bubble.style.top = (y - 14) + 'px';
+    bubble.style.setProperty('--tail', (x - cx) + 'px');
+    bubble.classList.add('on');
+  }
+  function stopFinish() {
+    bubble.classList.remove('on');
+    FIN.on = false; FIN.token++; FIN.walking = false;
+    if (girl) girl.visible = false;
+    if (rider) rider.visible = true;
+    reins.forEach(r => r.visible = true);
+    if (leash) leash.visible = false;
+  }
+
+  // avança o estado (posição do cavalo, da cavaleira)
+  function stepFinish(dt) {
+    FIN.t += dt;
+    const t = FIN.t;
+    // cavalo: conduzido de T_REIN a T_WALK, virando rumo à lateral
+    let v = 0;
+    if (t >= T_REIN && t < T_WALK) v = FIN.sp * Math.max(0, Math.min(1, (t - T_REIN) / 0.5, (T_WALK - t) / 0.5));
+    FIN.walking = v > 0.5;
+    if (v > 0 && dt > 0) {
+      const target = FIN.dir > 0 ? 0 : Math.PI;
+      const step = Math.max(-0.9 * dt, Math.min(0.9 * dt, angDiff(target, R.heading)));
+      R.heading += step;
+      R.turn += (step / dt - R.turn) * Math.min(1, dt * 8);
+      R.x += Math.cos(R.heading) * v * dt;
+      R.y += Math.sin(R.heading) * v * dt;
+    } else if (dt > 0) R.turn += (0 - R.turn) * Math.min(1, dt * 8);
+    if (dt > 0) { R.speed += (v - R.speed) * Math.min(1, dt * 8); if (R.speed < 0.8) R.speed = 0; }
+    // cavaleira: ao lado esquerdo do cavalo, na altura do ombro
+    const f = { x: Math.cos(R.heading), z: Math.sin(R.heading) };
+    const lx = f.z, lz = -f.x;
+    if (t < T_WALK) {
+      const sh = { x: R.x + lx * 26 + f.x * 24, z: R.y + lz * 26 + f.z * 24 };      // ombro esquerdo
+      const fr = { x: R.x + lx * 9 + f.x * 98, z: R.y + lz * 9 + f.z * 98 };         // à frente da cabeça
+      const k = Math.max(0, Math.min(1, (t - T_DIS) / (T_REIN - T_DIS))), ke = k * k * (3 - 2 * k);
+      FIN.gx = sh.x + (fr.x - sh.x) * ke; FIN.gz = sh.z + (fr.z - sh.z) * ke;
+      FIN.yaw = Math.atan2(f.x, f.z);
+      FIN.moving = (t >= T_DIS && t < T_REIN) || FIN.walking;
+    } else {
+      FIN.moving = false;
+      if (!FIN.frozen) FIN.frozen = { x: FIN.gx, z: FIN.gz, yaw: FIN.yaw };
+      const u = Math.min(1, (t - T_WALK) / 0.6), e = u * u * (3 - 2 * u);
+      FIN.gx = FIN.frozen.x; FIN.gz = FIN.frozen.z;
+      FIN.yaw = lerpAng(FIN.frozen.yaw, 0, e);             // vira de frente para o usuário (+z)
+    }
+  }
+
+  // aplica a pose (chamada a cada quadro, depois do cavalo)
+  function poseFinish() {
+    const t = FIN.t;
+    const u = Math.min(1, t / T_DIS), e = 1 - Math.pow(1 - u, 2);
+    let x = FIN.gx, z = FIN.gz, y = 0;
+    if (t < T_DIS) {                                      // salta da sela até o chão
+      x = FIN.sx + (FIN.gx - FIN.sx) * e; z = FIN.sz + (FIN.gz - FIN.sz) * e;
+      y = FIN.y0 * (1 - u * u) + 16 * Math.sin(Math.PI * u);
+    }
+    girl.position.set(x, Math.max(0, y), z + SHIFT_Y);
+    girl.rotation.y = FIN.yaw;
+    gShadow.position.y = 0.3 - girl.position.y / HORSE_SCALE;
+    reins.forEach(r => { r.visible = t < T_DIS; });
+
+    // pernas / tronco
+    const walkPh = t * Math.PI * 2 * (0.9 + FIN.sp / 60);
+    if (t < T_DIS) {
+      gLegs.forEach(l => { l.rotation.x = -0.9 * (1 - u); });
+      gTorso.rotation.x = 0.22 * (1 - u);
+    } else if (FIN.moving) {
+      gLegs[0].rotation.x = Math.sin(walkPh) * 0.55;
+      gLegs[1].rotation.x = -Math.sin(walkPh) * 0.55;
+      gTorso.rotation.x = 0.04;
+    } else {
+      gLegs.forEach(l => { l.rotation.x *= 0.8; });
+      gTorso.rotation.x = 0;
+    }
+
+    // braço esquerdo (livre): balança ao andar
+    gArmL.rotation.set(FIN.moving ? -Math.sin(walkPh) * 0.4 : 0, 0, 0.12);
+
+    // braço direito: tira as rédeas pela cabeça, conduz, solta e acena
+    let ax = 0, az = -0.12, fx = 0, fz = 0;
+    if (t >= T_DIS && t < T_REIN) {
+      const k = (t - T_DIS) / (T_REIN - T_DIS);
+      ax = -1.8 * Math.sin(Math.PI * k) + 0.5 * k;                    // passa as rédeas por cima da cabeça
+      az = -0.12 - 0.23 * k; fx = -0.6 * k;
+    } else if (t >= T_REIN && t < T_WALK) {
+      ax = 0.5; az = -0.35; fx = -0.6;                                 // conduz: mão perto da boca do cavalo
+    } else if (t >= T_WALK) {
+      const rel = Math.min(1, (t - T_WALK) / 0.4);
+      ax = 0.5 * (1 - rel); fx = -0.6 * (1 - rel);
+      az = -0.35 + 0.23 * rel;
+      const w = Math.max(0, t - T_TURN);
+      const raise = Math.min(1, w / 0.45), er = 1 - Math.pow(1 - raise, 3);
+      az = az * (1 - er) + (-2.6) * er;
+      fz = raise >= 1 ? -0.15 + Math.sin((w - 0.45) * 9) * 0.65 : 0;
+      if (raise >= 1) girl.rotation.y += Math.sin(w * 1.6) * 0.07;
+    }
+    gHead.rotation.x = t >= T_TURN ? -0.55 * Math.min(1, (t - T_TURN) / 0.4) : 0;   // olha para cima, para o usuário
+    gArmR.rotation.set(ax, 0, az);
+    gForeR.rotation.set(fx, 0, fz);
+
+    // rédea: da mão direita até a boca do cavalo (de T_DIS até soltar)
+    if (leash) {
+      const on = t >= T_DIS && t < T_WALK + 0.25;
+      leash.visible = on;
+      if (on) {
+        girl.updateMatrixWorld(true); horse.updateMatrixWorld(true);
+        const A = gForeR.localToWorld(new THREE.Vector3(0, -14.2, 0));
+        const B = horse.localToWorld(new THREE.Vector3(80, 84, 0));
+        const d = new THREE.Vector3().subVectors(B, A), len = d.length();
+        leash.position.copy(A).addScaledVector(d, 0.5);
+        leash.scale.set(1, Math.max(0.01, len), 1);
+        leash.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize());
+      }
+    }
+  }
+
   function layout() {
     const r = svg.getBoundingClientRect();
     const wr = wrap.getBoundingClientRect();
@@ -4862,6 +5260,10 @@ document.addEventListener('webkitfullscreenchange', () => {
   }
 
   function update(dt) {
+    if (FIN.on) {
+      if (RP.active && RP.s < RP.total - 0.05) stopFinish();      // voltou a barra do replay
+      else { stepFinish(dt); if (RP.active) syncReplayUI(); return; }
+    }
     if (RP.active) { updateReplay(dt); return; }
     const n = pathPoints.length;
     if (n === 0) { R.vis = false; R.prevF = null; return; }
@@ -4920,6 +5322,7 @@ document.addEventListener('webkitfullscreenchange', () => {
       horse.updateMatrixWorld(true);
 
     }
+    if (girl) { girl.visible = FIN.on && R.vis; if (FIN.on) { poseFinish(); updateBubble(); } else bubble.classList.remove('on'); }
 
     const mpm = R.speed / MPM_TO_PXS / (RP.active ? RP.speed : 1);
     const g = gaitOf(mpm);
@@ -4985,7 +5388,134 @@ document.addEventListener('webkitfullscreenchange', () => {
     return { x: pts[lo].x + (pts[hi].x - pts[lo].x) * f, y: pts[lo].y + (pts[hi].y - pts[lo].y) * f };
   }
 
-  // Barra do replay (dentro do campo, visível também em tela cheia)
+
+  // ── Replay: apaga o percurso e o revela junto com o cavalo ──────────
+  let gameDone = false;
+  const RV = { on: false, g: null, pieces: [], bridges: [], saved: [], ks: [], shown: -1, startEl: null, endEl: null, endDone: false };
+  const NSV = 'http://www.w3.org/2000/svg';
+  function svgEl(tag, attrs) {
+    const e = document.createElementNS(NSV, tag);
+    Object.keys(attrs).forEach(k => e.setAttribute(k, attrs[k]));
+    return e;
+  }
+  function markerIdx(m, pts) {
+    const lim = (m._i != null) ? Math.min(m._i, pts.length - 1) : pts.length - 1;
+    for (let i = lim; i >= 0; i--) if (Math.hypot(pts[i].x - m.x, pts[i].y - m.y) < 45) return i;
+    let best = 0, bd = 1e9;
+    for (let i = 0; i <= lim; i++) { const d = Math.hypot(pts[i].x - m.x, pts[i].y - m.y); if (d < bd) { bd = d; best = i; } }
+    return best;
+  }
+  function revealBegin() {
+    revealEnd();
+    const LP = document.getElementById('layer-path'), LS = document.getElementById('layer-speed'), LM = document.getElementById('layer-markers');
+    if (!LP || !LM) return;
+    const pts = RP.pts;
+    RV.saved = _errorMarkers.slice();
+    RV.ks = RV.saved.map(m => markerIdx(m, pts));
+    RV.on = true; RV.shown = -1; RV.endDone = false;
+    LP.style.display = 'none';
+    if (LS) LS.style.display = 'none';
+    const g = svgEl('g', { id: 'rp-trail' });
+    LP.parentNode.insertBefore(g, LM);
+    RV.g = g;
+    // trechos contínuos (separados por "dedo levantado")
+    RV.pieces = []; RV.bridges = [];
+    let st = 0;
+    for (let i = 1; i <= pts.length; i++) {
+      const end = i === pts.length, br = !end && pts[i]._bridge;
+      if (end || br) {
+        const seg = pts.slice(st, i);
+        if (seg.length >= 2) {
+          let d = 'M' + seg[0].x + ',' + seg[0].y, cum = [0], tot = 0;
+          for (let j = 1; j < seg.length; j++) {
+            d += ' L' + seg[j].x + ',' + seg[j].y;
+            tot += Math.hypot(seg[j].x - seg[j - 1].x, seg[j].y - seg[j - 1].y); cum.push(tot);
+          }
+          const el = svgEl('path', { d: d, fill: 'none', stroke: '#2563eb', 'stroke-width': '2.5', 'stroke-linejoin': 'round', 'stroke-linecap': 'round', opacity: '0.85', pathLength: String(Math.max(tot, 0.001)) });
+          el.style.display = 'none';
+          g.appendChild(el);
+          RV.pieces.push({ el: el, a: st, b: i - 1, cum: cum, tot: Math.max(tot, 0.001) });
+        }
+        if (br) {
+          const a = pts[i - 1], b = pts[i];
+          const ln = svgEl('line', { x1: a.x, y1: a.y, x2: b.x, y2: b.y, stroke: '#e91e8c', 'stroke-width': '1.5', 'stroke-dasharray': '6,4', opacity: '0.7' });
+          ln.style.display = 'none';
+          g.appendChild(ln);
+          RV.bridges.push({ el: ln, at: i });
+        }
+        st = i;
+      }
+    }
+    if (typeof _startPt !== 'undefined' && _startPt) {
+      const c = svgEl('circle', { cx: _startPt.x, cy: _startPt.y, r: 12, fill: '#27ae60', stroke: '#1a7a45', 'stroke-width': 2 });
+      const t = svgEl('text', { 'text-anchor': 'middle', 'dominant-baseline': 'central', fill: 'white', 'font-size': 13, 'font-weight': 'bold', 'font-family': 'Arial,sans-serif', x: _startPt.x, y: _startPt.y });
+      t.textContent = '▶';
+      g.appendChild(c); g.appendChild(t);
+    }
+    RV.endEl = null;
+    if (typeof _endPt !== 'undefined' && _endPt) {
+      const e2 = svgEl('g', {});
+      e2.appendChild(svgEl('rect', { x: _endPt.x - 12, y: _endPt.y - 12, width: 24, height: 24, rx: 3, fill: '#c0392b', stroke: '#7b1010', 'stroke-width': 2 }));
+      const t2 = svgEl('text', { 'text-anchor': 'middle', 'dominant-baseline': 'central', fill: 'white', 'font-size': 13, 'font-weight': 'bold', 'font-family': 'Arial,sans-serif', x: _endPt.x, y: _endPt.y });
+      t2.textContent = '■';
+      e2.appendChild(t2);
+      e2.style.display = 'none';
+      g.appendChild(e2); RV.endEl = e2;
+    }
+    _errorMarkers = [];
+    updateLayerMarkers();
+  }
+  function revealEnd() {
+    if (!RV.on) return;
+    RV.on = false;
+    const LP = document.getElementById('layer-path'), LS = document.getElementById('layer-speed');
+    if (RV.g && RV.g.parentNode) RV.g.parentNode.removeChild(RV.g);
+    RV.g = null;
+    _errorMarkers = RV.saved;
+    if (LP) LP.style.display = '';
+    if (LS) LS.style.display = '';
+    updateLayerMarkers();
+  }
+  function idxAtTime(sec) {
+    const vt = RP.vt, n = vt.length;
+    if (sec <= 0) return 0;
+    if (sec >= vt[n - 1]) return n - 1;
+    let lo = 0, hi = n - 1;
+    while (hi - lo > 1) { const m = (lo + hi) >> 1; if (vt[m] <= sec) lo = m; else hi = m; }
+    return lo;
+  }
+  function revealUpdate() {
+    if (!RV.on) return;
+    const pts = RP.pts, i = idxAtTime(RP.s);
+    const done = RP.s >= RP.total - 1e-6;
+    const cur = posAtTime(RP.s);
+    RV.pieces.forEach(pc => {
+      if (i < pc.a) { pc.el.style.display = 'none'; return; }
+      let drawn;
+      if (i >= pc.b) drawn = pc.tot;
+      else {
+        const k = i - pc.a, nx = pts[i + 1];
+        const segL = Math.hypot(pts[i + 1].x - pts[i].x, pts[i + 1].y - pts[i].y);
+        const part = segL > 0 ? Math.hypot(cur.x - pts[i].x, cur.y - pts[i].y) : 0;
+        drawn = Math.min(pc.tot, pc.cum[k] + part);
+      }
+      pc.el.style.display = drawn > 0.5 ? '' : 'none';
+      pc.el.setAttribute('stroke-dasharray', drawn + ' ' + (pc.tot + 1));
+    });
+    RV.bridges.forEach(b => { b.el.style.display = i >= b.at ? '' : 'none'; });
+    if (RV.endEl) RV.endEl.style.display = done ? '' : 'none';
+    const LS = document.getElementById('layer-speed');
+    if (LS) LS.style.display = done ? '' : 'none';
+    let cnt = 0;
+    for (let q = 0; q < RV.ks.length; q++) if (RV.ks[q] <= i) cnt++;
+    if (cnt !== RV.shown) {
+      RV.shown = cnt;
+      _errorMarkers = RV.saved.filter((m, q) => RV.ks[q] <= i);
+      updateLayerMarkers();
+    }
+  }
+
+  // Barra do replay (abaixo do campo; em tela cheia, fixa na base)
   const rpBar = document.createElement('div');
   rpBar.id = 'replay-bar';
   rpBar.innerHTML =
@@ -4995,7 +5525,7 @@ document.addEventListener('webkitfullscreenchange', () => {
     '<button id="rp-close" class="rp-btn" aria-label="close">✕</button></div>' +
     '<div class="rp-row rp-speeds">' +
     [0.5, 1, 2, 3, 4].map(v => '<button class="rp-spd" data-s="' + v + '">' + v + '×</button>').join('') + '</div>';
-  wrap.appendChild(rpBar);
+  wrapC.insertAdjacentElement('afterend', rpBar);
   const rpPlay = rpBar.querySelector('#rp-play');
   const rpSeek = rpBar.querySelector('#rp-seek');
   const rpTime = rpBar.querySelector('#rp-time');
@@ -5026,13 +5556,25 @@ document.addEventListener('webkitfullscreenchange', () => {
     R.vis = true; R.x = P.x; R.y = P.y; R.speed = 0; R.turn = 0;
     R.heading = Math.hypot(Q.x - P.x, Q.y - P.y) > 1 ? Math.atan2(Q.y - P.y, Q.x - P.x) : centroidHeading(P.x, P.y);
     if (!R.prevF) R.prevF = { x: P.x, y: P.y };
-    rpBar.style.display = 'block';
+    rpBar.classList.add('on');
+    document.body.classList.add('rp-bar');
+    if (!(wrapC && wrapC.classList.contains('fs-active'))) rpBar.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    stopFinish();
+    revealBegin();
     syncReplayUI();
   }
   function stopReplay() {
     if (!RP.active) return;
     RP.active = false; RP.playing = false;
-    rpBar.style.display = 'none';
+    rpBar.classList.remove('on');
+    document.body.classList.remove('rp-bar');
+    revealEnd();
+    stopFinish();
+    if (gameDone && !errorDQ && pathPoints.length) {   // volta ao final do percurso, cavaleira acenando
+      const L2 = pathPoints[pathPoints.length - 1];
+      R.x = L2.x; R.y = L2.y; R.speed = 0;
+      startFinish(true);
+    }
   }
   function updateReplay(dt) {
     if (RP.playing) {
@@ -5051,6 +5593,10 @@ document.addEventListener('webkitfullscreenchange', () => {
     if (Math.hypot(B.x - A.x, B.y - A.y) > 5)
       R.heading += angDiff(Math.atan2(B.y - A.y, B.x - A.x), R.heading) * Math.min(1, dt * 9);
     R.turn += (angDiff(R.heading, prevH) / dt - R.turn) * Math.min(1, dt * 8);
+    revealUpdate();
+    // chegou ao fim (e a prova foi concluída sem desclassificação): a cavaleira desmonta e acena
+    if (RP.s >= RP.total - 1e-6 && !FIN.on && R.speed < 3) startFinish();
+    else if (RP.s < RP.total - 0.05 && FIN.on) stopFinish();
     syncReplayUI();
   }
 
@@ -5080,6 +5626,65 @@ document.addEventListener('webkitfullscreenchange', () => {
   replayBtn.textContent = L.replay;
   replayBtn.addEventListener('click', startReplay);
   modeBtn.parentNode.insertBefore(replayBtn, modeBtn.nextSibling);
+
+  // Tradução dos textos fixos (EN): inicial + qualquer texto que o jogo escreva depois
+  if (LANG === 'en' && window.XDOM) {
+    XDOM(document.body);
+    new MutationObserver(ms => {
+      ms.forEach(m => {
+        if (m.type === 'characterData') { const v = X(m.target.nodeValue); if (v !== m.target.nodeValue) m.target.nodeValue = v; }
+        else m.addedNodes.forEach(n => { if (n.nodeType === 3) { const v = X(n.nodeValue); if (v !== n.nodeValue) n.nodeValue = v; } else if (n.nodeType === 1) XDOM(n); });
+      });
+    }).observe(document.body, { childList: true, characterData: true, subtree: true });
+  }
+
+  // Celular: enquanto o campo não está todo visível na tela, o dedo só rola a página
+  // (não começa a traçar o percurso por engano).
+  (function () {
+    const ov = document.getElementById('touch-overlay');
+    if (!ov) return;
+    let lastTouch = 0;
+    function ready() {
+      if (wrapC && wrapC.classList.contains('fs-active')) return true;
+      const r = wrap.getBoundingClientRect();
+      if (r.height < 10) return true;
+      const vis = Math.min(r.bottom, window.innerHeight) - Math.max(r.top, 0);
+      return vis >= r.height * 0.92;
+    }
+    function apply() {
+      const v = ready() ? 'none' : 'pan-y';
+      if (ov.style.touchAction !== v) { ov.style.touchAction = v; svg.style.touchAction = v; }
+    }
+    ['scroll', 'resize', 'orientationchange'].forEach(ev => window.addEventListener(ev, apply, { passive: true }));
+    setInterval(apply, 250);
+    apply();
+    ov.addEventListener('touchstart', e => { lastTouch = Date.now(); if (!ready()) e.stopImmediatePropagation(); }, { capture: true, passive: true });
+    ov.addEventListener('pointerdown', e => { if (e.pointerType === 'touch') { lastTouch = Date.now(); if (!ready()) e.stopImmediatePropagation(); } }, { capture: true, passive: true });
+    ov.addEventListener('mousedown', e => { if (Date.now() - lastTouch < 1000 && !ready()) e.stopImmediatePropagation(); }, { capture: true });
+  })();
+
+  // Seletor de idioma (bandeiras). Trocar recarrega o jogo no novo idioma.
+  document.title = 'Butterfly Way';
+  (function () {
+    if (!window.BW) return;
+    const box = document.createElement('div');
+    box.id = 'bw-lang';
+    ['pt', 'en'].forEach(l => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.innerHTML = BW.flags[l];
+      b.title = l === 'pt' ? 'Português (Brasil)' : 'English (US)';
+      b.setAttribute('aria-label', b.title);
+      if (l === LANG) b.className = 'on';
+      b.addEventListener('click', () => {
+        if (l === LANG) return;
+        if (typeof drawing !== 'undefined' && drawing) return;
+        BW.set(l); location.reload();
+      });
+      box.appendChild(b);
+    });
+    document.body.appendChild(box);
+  })();
 
   // Duplo toque/clique num percurso = "Jogar agora" (funciona também em celulares
   // que não disparam o evento dblclick). Evita iniciar duas vezes seguidas.
@@ -5168,11 +5773,22 @@ document.addEventListener('webkitfullscreenchange', () => {
       popRestart.style.background = errorDQ ? '#b91c1c' : '#475569';
     }
     popReplay.style.display = pathPoints.length >= 2 ? 'inline-block' : 'none';
+    gameDone = true;
+    if (!errorDQ && R.on && R.ok && R.vis && !RP.active) {
+      // percurso concluído: a cavaleira desmonta e acena; o resultado aparece logo depois
+      const popup = document.getElementById('popup-overlay');
+      popup.classList.remove('visible');
+      startFinish();
+      const tok = FIN.token;
+      setTimeout(() => { if (FIN.on && FIN.token === tok) popup.classList.add('visible'); }, 8600);
+    }
     return out;
   };
   const _reset = window.reset;
   window.reset = function () {
     stopReplay();
+    gameDone = false;
+    stopFinish();
     return _reset.apply(this, arguments);
   };
 
