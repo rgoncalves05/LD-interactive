@@ -781,6 +781,73 @@
   border-color: var(--accent);
 }
 
+/* ── Tela cheia: sair + recomeçar sempre no topo, acima do popup (z 9500) ── */
+#btn-fs-exit {
+  z-index: 9600;
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  right: calc(12px + env(safe-area-inset-right, 0px));
+}
+#fs-topbar {
+  display: none;
+  position: fixed;
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  left: calc(12px + env(safe-area-inset-left, 0px));
+  z-index: 9600;
+  gap: 8px;
+}
+body.rp-fs #fs-topbar { display: flex; }
+#fs-topbar button {
+  height: 44px;
+  padding: 0 16px;
+  border-radius: 22px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+}
+#fs-topbar button:hover:not(:disabled) { background: rgba(0, 0, 0, 0.8); }
+#fs-topbar button:disabled { opacity: 0.4; cursor: default; }
+#btn-replay:disabled { opacity: 0.45; cursor: default; }
+
+/* ── Replay ── */
+#replay-bar {
+  display: none;
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  z-index: 6;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: rgba(20, 24, 30, 0.72);
+  color: #fff;
+  line-height: 1.2;
+  font-family: 'DM Sans', sans-serif;
+  backdrop-filter: blur(4px);
+  user-select: none;
+  -webkit-user-select: none;
+}
+#replay-bar .rp-row { display: flex; align-items: center; gap: 8px; }
+#replay-bar .rp-speeds { margin-top: 8px; justify-content: center; }
+#replay-bar button {
+  height: 34px;
+  min-width: 34px;
+  padding: 0 10px;
+  border-radius: 17px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+#replay-bar .rp-spd.active { background: #0d7a55; border-color: #7ef0bf; }
+#rp-seek { flex: 1; min-width: 0; accent-color: #0d7a55; touch-action: pan-x; }
+#rp-time { font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
 </style>
 </head>
 <body>
@@ -4391,10 +4458,10 @@ document.addEventListener('webkitfullscreenchange', () => {
   const LAG_MIN = 0, LAG_SLACK = 0, LAG_IDLE = 0;   // sem guia: o cavalo "carrega" o dedo
 
   const L = (LANG === 'pt') ? {
-    btn: '🐎 Cavalo 3D', on: 'ligado', off: 'desligado', halt: 'Parado', walk: 'Passo', trot: 'Trote', canter: 'Galope',
+    replay: '🎬 Replay', restart: '↺ Recomeçar', exitFs: 'Sair da tela cheia', btn: '🐎 Cavalo 3D', on: 'ligado', off: 'desligado', halt: 'Parado', walk: 'Passo', trot: 'Trote', canter: 'Galope',
     noGL: 'Seu navegador não suporta gráficos 3D (WebGL).', m: 'm/min'
   } : {
-    btn: '🐎 3D horse', on: 'on', off: 'off', halt: 'Halt', walk: 'Walk', trot: 'Trot', canter: 'Canter',
+    replay: '🎬 Replay', restart: '↺ Restart', exitFs: 'Exit fullscreen', btn: '🐎 3D horse', on: 'on', off: 'off', halt: 'Halt', walk: 'Walk', trot: 'Trot', canter: 'Canter',
     noGL: 'Your browser does not support 3D graphics (WebGL).', m: 'm/min'
   };
 
@@ -4795,6 +4862,7 @@ document.addEventListener('webkitfullscreenchange', () => {
   }
 
   function update(dt) {
+    if (RP.active) { updateReplay(dt); return; }
     const n = pathPoints.length;
     if (n === 0) { R.vis = false; R.prevF = null; return; }
     const F = pathPoints[n - 1];
@@ -4853,7 +4921,7 @@ document.addEventListener('webkitfullscreenchange', () => {
 
     }
 
-    const mpm = R.speed / MPM_TO_PXS;
+    const mpm = R.speed / MPM_TO_PXS / (RP.active ? RP.speed : 1);
     const g = gaitOf(mpm);
     elGait.textContent = L[g];
     elMpm.textContent = Math.round(mpm) + ' ' + L.m;
@@ -4888,9 +4956,195 @@ document.addEventListener('webkitfullscreenchange', () => {
     }
   }
 
+
+  // ═══════════════ REPLAY ═══════════════
+  // Reexecuta o percurso gravado (pathPoints) com o cavalo 3D, no ritmo real
+  // em que foi cavalgado (esperas muito longas são encurtadas).
+  const RP = { active: false, playing: false, speed: 1, s: 0, total: 0, pts: [], vt: [] };
+  const overlay = document.getElementById('touch-overlay');
+  const wrapC = document.getElementById('canvas-wrap');
+
+  function canReplay() { return pathPoints.length >= 2 && !drawing; }
+
+  function buildTimeline() {
+    const pts = pathPoints.slice(), vt = [0];
+    for (let i = 1; i < pts.length; i++) {
+      const dtms = Math.max(0, (pts[i].t || 0) - (pts[i - 1].t || 0));
+      const cap = pts[i]._bridge ? 300 : 1500;     // dedo levantado / pausas longas
+      vt.push(vt[i - 1] + Math.min(dtms, cap) / 1000);
+    }
+    RP.pts = pts; RP.vt = vt; RP.total = vt[vt.length - 1];
+  }
+  function posAtTime(s) {
+    const pts = RP.pts, vt = RP.vt, n = pts.length;
+    if (s <= 0) return { x: pts[0].x, y: pts[0].y };
+    if (s >= vt[n - 1]) return { x: pts[n - 1].x, y: pts[n - 1].y };
+    let lo = 0, hi = n - 1;
+    while (hi - lo > 1) { const m = (lo + hi) >> 1; if (vt[m] <= s) lo = m; else hi = m; }
+    const span = vt[hi] - vt[lo], f = span > 0 ? (s - vt[lo]) / span : 0;
+    return { x: pts[lo].x + (pts[hi].x - pts[lo].x) * f, y: pts[lo].y + (pts[hi].y - pts[lo].y) * f };
+  }
+
+  // Barra do replay (dentro do campo, visível também em tela cheia)
+  const rpBar = document.createElement('div');
+  rpBar.id = 'replay-bar';
+  rpBar.innerHTML =
+    '<div class="rp-row"><button id="rp-play" class="rp-btn" aria-label="play/pause">⏸</button>' +
+    '<input id="rp-seek" type="range" min="0" max="1000" value="0">' +
+    '<span id="rp-time">0:00 / 0:00</span>' +
+    '<button id="rp-close" class="rp-btn" aria-label="close">✕</button></div>' +
+    '<div class="rp-row rp-speeds">' +
+    [0.5, 1, 2, 3, 4].map(v => '<button class="rp-spd" data-s="' + v + '">' + v + '×</button>').join('') + '</div>';
+  wrap.appendChild(rpBar);
+  const rpPlay = rpBar.querySelector('#rp-play');
+  const rpSeek = rpBar.querySelector('#rp-seek');
+  const rpTime = rpBar.querySelector('#rp-time');
+
+  function fmt(sec) {
+    sec = Math.max(0, Math.round(sec));
+    return Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0');
+  }
+  function syncReplayUI() {
+    const atEnd = RP.s >= RP.total - 1e-6;
+    rpPlay.textContent = RP.playing ? '⏸' : (atEnd ? '↺' : '▶');
+    rpBar.querySelectorAll('.rp-spd').forEach(b =>
+      b.classList.toggle('active', Math.abs(+b.dataset.s - RP.speed) < 1e-6));
+    if (document.activeElement !== rpSeek) rpSeek.value = RP.total > 0 ? Math.round(RP.s / RP.total * 1000) : 0;
+    rpTime.textContent = fmt(RP.s) + ' / ' + fmt(RP.total);
+  }
+
+  function startReplay() {
+    if (!canReplay()) return;
+    if (!R.on) setHorse(true);
+    if (!R.ok) return;
+    const popup = document.getElementById('popup-overlay');
+    if (popup) popup.classList.remove('visible');
+    buildTimeline();
+    if (RP.total <= 0) return;
+    RP.active = true; RP.playing = true; RP.s = 0;
+    const P = posAtTime(0), Q = posAtTime(0.25);
+    R.vis = true; R.x = P.x; R.y = P.y; R.speed = 0; R.turn = 0;
+    R.heading = Math.hypot(Q.x - P.x, Q.y - P.y) > 1 ? Math.atan2(Q.y - P.y, Q.x - P.x) : centroidHeading(P.x, P.y);
+    if (!R.prevF) R.prevF = { x: P.x, y: P.y };
+    rpBar.style.display = 'block';
+    syncReplayUI();
+  }
+  function stopReplay() {
+    if (!RP.active) return;
+    RP.active = false; RP.playing = false;
+    rpBar.style.display = 'none';
+  }
+  function updateReplay(dt) {
+    if (RP.playing) {
+      RP.s = Math.min(RP.total, RP.s + dt * RP.speed);
+      if (RP.s >= RP.total) RP.playing = false;
+    }
+    const F = posAtTime(RP.s);
+    const k = 1 - Math.exp(-dt * 26);
+    const nx = R.x + (F.x - R.x) * k, ny = R.y + (F.y - R.y) * k;
+    const moved = Math.hypot(nx - R.x, ny - R.y);
+    R.x = nx; R.y = ny;
+    R.speed += (moved / dt - R.speed) * Math.min(1, dt * 8);
+    if (R.speed < 0.8) R.speed = 0;
+    const A = posAtTime(RP.s - 0.15), B = posAtTime(RP.s + 0.15);
+    const prevH = R.heading;
+    if (Math.hypot(B.x - A.x, B.y - A.y) > 5)
+      R.heading += angDiff(Math.atan2(B.y - A.y, B.x - A.x), R.heading) * Math.min(1, dt * 9);
+    R.turn += (angDiff(R.heading, prevH) / dt - R.turn) * Math.min(1, dt * 8);
+    syncReplayUI();
+  }
+
+  rpPlay.addEventListener('click', () => {
+    if (!RP.active) return;
+    if (RP.s >= RP.total - 1e-6) RP.s = 0;           // ↺: recomeça
+    RP.playing = !RP.playing || RP.s === 0 ? true : false;
+    syncReplayUI();
+  });
+  rpBar.querySelectorAll('.rp-spd').forEach(b =>
+    b.addEventListener('click', () => { RP.speed = +b.dataset.s; syncReplayUI(); }));
+  rpSeek.addEventListener('input', () => {
+    RP.s = RP.total * (+rpSeek.value / 1000);
+    syncReplayUI();
+  });
+  rpBar.querySelector('#rp-close').addEventListener('click', stopReplay);
+
+  // durante o replay o dedo não desenha
+  ['mousedown', 'touchstart', 'pointerdown'].forEach(ev =>
+    overlay.addEventListener(ev, e => {
+      if (RP.active) { e.stopImmediatePropagation(); if (e.cancelable) e.preventDefault(); }
+    }, { capture: true, passive: false }));
+
+  // Botão Replay na barra de controles
+  const replayBtn = document.createElement('button');
+  replayBtn.id = 'btn-replay';
+  replayBtn.textContent = L.replay;
+  replayBtn.addEventListener('click', startReplay);
+  modeBtn.parentNode.insertBefore(replayBtn, modeBtn.nextSibling);
+
+  // ═══════════════ TELA CHEIA / POPUP ═══════════════
+  // Em tela cheia o painel de controles some; esta barra fixa no topo mantém
+  // "Recomeçar" e "Replay" à mão (o ✕ de sair já existe) — acima do popup.
+  const fsBar = document.createElement('div');
+  fsBar.id = 'fs-topbar';
+  const fsRestart = document.createElement('button');
+  fsRestart.id = 'fs-restart';
+  fsRestart.textContent = (typeof t === 'function' ? t('btn_restart') : L.restart);
+  const fsReplay = document.createElement('button');
+  fsReplay.id = 'fs-replay';
+  fsReplay.textContent = L.replay;
+  fsBar.appendChild(fsRestart); fsBar.appendChild(fsReplay);
+  document.body.appendChild(fsBar);
+  fsRestart.addEventListener('click', () => {
+    const popup = document.getElementById('popup-overlay');
+    if (popup) popup.classList.remove('visible');
+    reset();
+  });
+  fsReplay.addEventListener('click', startReplay);
+  const exitBtn = document.getElementById('btn-fs-exit');
+  if (exitBtn) exitBtn.title = L.exitFs;
+
+  function syncFs() {
+    document.body.classList.toggle('rp-fs', !!(wrapC && wrapC.classList.contains('fs-active')));
+  }
+  if (wrapC) new MutationObserver(syncFs).observe(wrapC, { attributes: true, attributeFilter: ['class'] });
+  syncFs();
+
+  // Popup final: sempre com Replay e Recomeçar
+  const popBox = document.getElementById('popup-box');
+  const popRestart = document.getElementById('pop-restart-btn');
+  const popReplay = document.createElement('button');
+  popReplay.id = 'pop-replay-btn';
+  popReplay.textContent = L.replay;
+  popReplay.style.cssText = 'display:none;margin-top:8px;background:#0d7a55;';
+  popReplay.addEventListener('click', startReplay);
+  if (popBox && popRestart) popBox.insertBefore(popReplay, popRestart);
+
+  const _finish = window.finishGame;
+  window.finishGame = function () {
+    const out = _finish.apply(this, arguments);
+    if (popRestart) {
+      popRestart.style.display = 'inline-block';
+      popRestart.style.background = errorDQ ? '#b91c1c' : '#475569';
+    }
+    popReplay.style.display = pathPoints.length >= 2 ? 'inline-block' : 'none';
+    return out;
+  };
+  const _reset = window.reset;
+  window.reset = function () {
+    stopReplay();
+    return _reset.apply(this, arguments);
+  };
+
+  // habilita/desabilita os botões de replay
+  setInterval(() => {
+    const ok = canReplay();
+    replayBtn.disabled = !ok;
+    fsReplay.disabled = !ok;
+  }, 250);
+
   modeBtn.textContent = L.btn + ': ' + L.off;
   setHorse(true, true);               // PADRÃO: ligado (se houver WebGL)
-  window.__ride = R;
+  window.__ride = R; window.__rp = RP; window.__startReplay = startReplay;
   window.__setHorse = setHorse;
 })();
 
