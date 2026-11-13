@@ -986,6 +986,92 @@ body.rp-fs #bw-lang { display: none; }
 #btn-pov.active { background: #0d7a55 !important; color: #fff !important; }
 #fs-topbar button.active { background: rgba(13,122,85,.9); }
 
+/* ═══ UX: melhorias de experiência ═══ */
+:root { --muted: #4b5563; }
+h1 span { }
+#menu-header h1 span, .title-row h1 > span:first-of-type { color: #008aa3 !important; }
+
+/* ── Menu: selos de dificuldade, recorde, aleatório ── */
+.formation-card { position: relative; }
+.ux-badge { position:absolute; top:6px; left:6px; font:700 .66rem 'DM Sans',sans-serif; padding:2px 8px; border-radius:999px; color:#fff; letter-spacing:.02em; }
+.ux-badge.easy { background:#0d7a55; } .ux-badge.med { background:#b45309; } .ux-badge.hard { background:#b91c1c; }
+.ux-start { position:absolute; top:-9px; right:6px; font:700 .66rem 'DM Sans',sans-serif; padding:2px 8px; border-radius:999px; background:#fde68a; color:#78350f; box-shadow:0 1px 4px rgba(0,0,0,.18); }
+.ux-cardstars { font-size:.8rem; color:#d97706; letter-spacing:1px; min-height:1em; }
+.ux-cardstars.none { color:#c4c8d0; }
+#ux-random { width:100%; margin-top:8px; background:transparent; color:var(--accent); border:2px solid var(--accent); font-weight:700; min-height:44px; }
+#ux-random:hover { background:var(--accent-light); }
+#btn-start-formation { min-height:48px; }
+
+/* ── Cabeçalho do jogo ── */
+#formation-name-header { display:inline-block; background:var(--accent-light); color:#0d7a55 !important; border-radius:999px; padding:2px 12px; font-size:.85rem !important; font-weight:700; margin-left:6px; }
+#ux-goal { display:flex; align-items:center; gap:10px; flex-wrap:wrap; background:#fff; border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:10px; padding:8px 12px; margin:0 0 10px; font:600 .9rem 'DM Sans',sans-serif; color:var(--text); }
+#ux-goal .rec { margin-left:auto; color:#92400e; font-weight:700; white-space:nowrap; }
+
+/* ── Controles compactos + painel Opções ── */
+.ux-br { flex-basis:100%; height:0; }
+#page-game .controls button, #ux-opts-panel button { min-height:40px; }
+#ux-opts-btn.open { background:var(--accent); color:#fff; border-color:var(--accent); }
+#ux-opts-panel { display:none; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:10px; margin:-4px 0 8px; gap:8px; flex-wrap:wrap; align-items:center; justify-content:center; }
+#ux-opts-panel.open { display:flex; }
+#ux-opts-panel .toggle-wrap { margin:0 6px; }
+.ux-switch { display:inline-flex; align-items:center; gap:6px; font:600 .85rem 'DM Sans',sans-serif; cursor:pointer; min-height:40px; padding:0 8px; }
+.ux-switch input { width:18px; height:18px; accent-color:var(--accent); }
+#ux-hint { font:500 .8rem 'DM Sans',sans-serif; color:var(--muted); text-align:center; width:100%; }
+#btn-replay[disabled], #btn-replay:disabled { opacity:.55; }
+
+/* ── Aviso de erro sobre a arena ── */
+#ux-toast { position:absolute; left:8px; right:8px; bottom:8px; z-index:6; pointer-events:none; display:flex; justify-content:center; line-height:1.3; }
+#ux-toast .box { pointer-events:auto; max-width:420px; background:rgba(17,24,39,.92); color:#fff; border-radius:12px; padding:9px 14px; font:600 .86rem 'DM Sans',sans-serif; box-shadow:0 6px 20px rgba(0,0,0,.3); display:flex; align-items:center; gap:10px; animation:uxIn .18s ease-out; }
+#ux-toast .box b { color:#fca5a5; display:block; font-size:.9rem; }
+#ux-toast .box span { font-weight:500; opacity:.95; }
+#ux-toast .box button { background:#fff; color:#b91c1c; border:none; border-radius:8px; padding:8px 12px; font-weight:700; white-space:nowrap; min-height:40px; }
+@keyframes uxIn { from { transform:translateY(10px); opacity:0; } to { transform:none; opacity:1; } }
+
+/* ── Popup: estrelas e recorde ── */
+#ux-stars { font-size:2rem; letter-spacing:4px; color:#f59e0b; margin:-2px 0 4px; }
+#ux-stars .off { color:#d1d5db; }
+#ux-rec { font:700 .95rem 'DM Sans',sans-serif; color:#0d7a55; margin:2px 0 10px; }
+#ux-again { width:100%; margin-top:8px; background:#fff; color:var(--accent); border:2px solid var(--accent); font-weight:700; min-height:44px; }
+
+/* ── Legenda recolhível ── */
+#ux-legend { margin:6px 0; text-align:center; }
+#ux-legend > summary { cursor:pointer; font:700 .85rem 'DM Sans',sans-serif; color:var(--muted); padding:8px; min-height:40px; list-style:none; }
+#ux-legend > summary::-webkit-details-marker { display:none; }
+#ux-legend > summary::before { content:'ⓘ '; }
+
+/* ── Tutorial visual (coach) ── */
+#ux-coach { position:fixed; inset:0; z-index:9800; background:rgba(15,23,42,.62); display:none; align-items:center; justify-content:center; padding:12px; }
+#ux-coach.open { display:flex; }
+#ux-coach .card { background:#fff; border-radius:18px; width:min(420px,100%); padding:18px 18px 14px; box-shadow:0 20px 60px rgba(0,0,0,.35); font-family:'DM Sans',sans-serif; max-height:94dvh; overflow:auto; }
+#ux-coach h3 { margin:0 0 4px; font-size:1.2rem; color:var(--text); border:0; padding:0; }
+#ux-coach p { margin:0 0 10px; color:var(--muted); font-size:.95rem; line-height:1.4; }
+#ux-coach .stage { background:#e8d5a3; border-radius:12px; margin-bottom:10px; }
+#ux-coach svg { display:block; width:100%; height:auto; }
+#ux-coach .dots { display:flex; justify-content:center; gap:6px; margin:4px 0 10px; }
+#ux-coach .dots i { width:8px; height:8px; border-radius:50%; background:#d1d5db; }
+#ux-coach .dots i.on { background:var(--accent); width:22px; border-radius:4px; }
+#ux-coach .row { display:flex; gap:8px; }
+#ux-coach .row button { flex:1; min-height:46px; font-weight:700; }
+#ux-coach .skip { background:transparent; color:var(--muted); border:1px solid var(--border2); }
+#ux-coach .links { text-align:center; margin-top:8px; font-size:.82rem; }
+#ux-coach .links a { color:var(--accent); cursor:pointer; text-decoration:underline; }
+.ux-draw { stroke-dasharray:var(--len); stroke-dashoffset:var(--len); animation:uxDraw 3.2s ease-in-out infinite; }
+@keyframes uxDraw { 0%{stroke-dashoffset:var(--len)} 70%,100%{stroke-dashoffset:0} }
+.ux-finger { offset-rotate:0deg; animation:uxFinger 3.2s ease-in-out infinite; }
+@keyframes uxFinger { 0%{offset-distance:0%} 70%,100%{offset-distance:100%} }
+@media (prefers-reduced-motion:reduce) { .ux-draw,.ux-finger { animation:none; stroke-dashoffset:0; offset-distance:100%; } }
+
+/* ── Mobile: arena mais para cima ── */
+@media (max-width:640px) {
+  #game-subtitle { display:none !important; }
+  #page-game .title-row { padding-bottom:0; gap:6px !important; }
+  #page-game .title-row h1 { font-size:1.05rem !important; line-height:1.25; margin:0; }
+  #ux-goal { font-size:.8rem; padding:6px 10px; margin-bottom:6px; }
+  #ux-opts-panel { padding:8px 6px; }
+}
+body.ux-fs #ux-opts-panel { display:none !important; }
+#page-game .controls button[onclick*=toggleFullscreen]{font-size:.85rem !important}
+
 </style>
 </head>
 <body>
@@ -6273,6 +6359,324 @@ document.addEventListener('webkitfullscreenchange', () => {
   setHorse(true, true);               // PADRÃO: ligado (se houver WebGL)
   window.__ride = R; window.__rp = RP; window.__startReplay = startReplay; window.__fin = FIN; window.__post = POST;
   window.__setHorse = setHorse;
+})();
+
+/* ═══ UX: melhorias de experiência (tutorial, opções, avisos, recorde, atalhos…) ═══ */
+(function () {
+  'use strict';
+  const EN = (typeof LANG !== 'undefined' && LANG === 'en');
+  const U = (pt, en) => EN ? en : pt;
+  const $ = id => document.getElementById(id);
+  const ls = (k, v) => { try { return v === undefined ? localStorage.getItem(k) : localStorage.setItem(k, v); } catch (e) { return null; } };
+  const vib = p => { try { if (navigator.vibrate && ls('bw_vib') !== '0') navigator.vibrate(p); } catch (e) {} };
+
+  // ───────── Som: mudo ─────────
+  window.__uxMuted = ls('bw_snd') === '0';
+  try {
+    const oc = AudioNode.prototype.connect;
+    AudioNode.prototype.connect = function (d) {
+      if (window.__uxMuted && typeof AudioDestinationNode !== 'undefined' && d instanceof AudioDestinationNode) return d;
+      return oc.apply(this, arguments);
+    };
+  } catch (e) {}
+
+  // ───────── Dificuldade / ordem sugerida no menu ─────────
+  const DIFF = [['med', U('Médio', 'Medium')], ['med', U('Médio', 'Medium')], ['easy', U('Fácil', 'Easy')],
+                ['hard', U('Difícil', 'Hard')], ['hard', U('Difícil', 'Hard')], ['hard', U('Difícil', 'Hard')]];
+  const bestKey = i => 'bw_best_' + FORMATIONS[i].name;
+  const getBest = i => { try { return JSON.parse(ls(bestKey(i)) || 'null'); } catch (e) { return null; } };
+  const starStr = n => '★'.repeat(n) + '☆'.repeat(3 - n);
+
+  function decorateMenu() {
+    FORMATIONS.forEach((f, i) => {
+      const c = $('fcard-' + i); if (!c) return;
+      c.querySelectorAll('.ux-badge,.ux-start,.ux-cardstars').forEach(n => n.remove());
+      const d = DIFF[i] || DIFF[0];
+      const b = document.createElement('span'); b.className = 'ux-badge ' + d[0]; b.textContent = d[1]; c.appendChild(b);
+      if (i === 2) { const s = document.createElement('span'); s.className = 'ux-start'; s.textContent = U('⭐ Comece aqui', '⭐ Start here'); c.appendChild(s); }
+      const bs = getBest(i);
+      const st = document.createElement('div'); st.className = 'ux-cardstars' + (bs ? '' : ' none');
+      st.textContent = bs ? starStr(bs.s) : '☆☆☆'; c.appendChild(st);
+      c.setAttribute('role', 'button'); c.setAttribute('tabindex', '0');
+      c.setAttribute('aria-label', f.name + ' — ' + d[1]);
+      if (!c.__k) { c.__k = 1; c.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectFormation(i); } }); }
+    });
+    const box = $('formation-box');
+    if (box && !$('ux-random')) {
+      const r = document.createElement('button'); r.id = 'ux-random'; r.type = 'button';
+      r.textContent = U('🎲 Percurso aleatório', '🎲 Random course');
+      r.onclick = () => { selectFormation(Math.floor(Math.random() * FORMATIONS.length)); startFormation(); };
+      box.appendChild(r);
+    }
+  }
+
+  // ───────── Cabeçalho + meta ─────────
+  function fixHeader() {
+    const h1 = document.querySelector('#page-game .title-row h1');
+    if (!h1) return;
+    const f = FORMATIONS[_selectedFormation];
+    h1.innerHTML = 'Luciana Diniz <span>Interactive</span> <span id="formation-name-header"></span>';
+    $('formation-name-header').textContent = f.name;
+    let g = $('ux-goal');
+    if (!g) { g = document.createElement('div'); g.id = 'ux-goal'; const ga = $('game-area'); ga.parentNode.insertBefore(g, ga); }
+    const n = NUM_LOGS;
+    const txt = (f.name === 'Shamrock')
+      ? U('🎯 Meta: trace as 4 folhas do trevo, cada uma uma vez, chegando sempre de frente.', '🎯 Goal: trace the 4 clover leaves, once each, always approaching head-on.')
+      : U(`🎯 Meta: cruze os ${n} obstáculos, uma vez cada, sem faltas.`, `🎯 Goal: cross all ${n} obstacles, once each, with no faults.`);
+    const bs = getBest(_selectedFormation);
+    g.innerHTML = '<span></span><span class="rec"></span>';
+    g.firstChild.textContent = txt;
+    g.lastChild.textContent = bs ? '🏆 ' + U('Recorde', 'Best') + ': ' + formatTime(bs.t) + ' ' + starStr(bs.s) : '';
+  }
+
+  // ───────── Controles compactos + painel Opções ─────────
+  function buildControls() {
+    const ctr = document.querySelector('#page-game .controls');
+    if (!ctr || $('ux-opts-btn')) return;
+    const find = fn => [...ctr.querySelectorAll('button')].find(fn);
+    const restart = find(b => (b.getAttribute('onclick') || '') === 'reset()');
+    const full = find(b => (b.getAttribute('onclick') || '').includes('toggleFullscreen'));
+    const replay = $('btn-replay');
+    const status = $('status'), timer = $('timer-display');
+    const resetF = find(b => (b.getAttribute('onclick') || '').includes('resetFormation'));
+    if (full) full.textContent = U('⛶ Tela cheia', '⛶ Fullscreen');
+    if (resetF) { resetF.textContent = U('↺ Layout original', '↺ Original layout'); resetF.title = U('Volta os obstáculos para a posição original', 'Puts the obstacles back in their original position'); }
+
+    const optsBtn = document.createElement('button'); optsBtn.id = 'ux-opts-btn'; optsBtn.type = 'button';
+    optsBtn.setAttribute('aria-expanded', 'false');
+    optsBtn.textContent = U('⚙ Opções', '⚙ Options');
+    const panel = document.createElement('div'); panel.id = 'ux-opts-panel';
+    optsBtn.onclick = () => { const o = panel.classList.toggle('open'); optsBtn.classList.toggle('open', o); optsBtn.setAttribute('aria-expanded', o); };
+
+    // ordem dos principais
+    [restart, full, replay, optsBtn].forEach(el => el && ctr.appendChild(el));
+    const br = document.createElement('span'); br.className = 'ux-br'; ctr.appendChild(br);
+    status && ctr.appendChild(status); timer && ctr.appendChild(timer);
+    const hint = document.createElement('div'); hint.id = 'ux-hint'; ctr.appendChild(hint);
+
+    // secundários → painel
+    ['btn-ride', 'btn-home', 'btn-pov', 'btn-edit', 'btn-rotate'].forEach(id => $(id) && panel.appendChild($(id)));
+    resetF && panel.appendChild(resetF);
+    const piso = $('btn-piso'); piso && panel.appendChild(piso.parentNode);
+    const tg = document.querySelector('#page-game .toggle-wrap'); tg && panel.appendChild(tg);
+
+    function sw(id, label, key, def, onchange) {
+      const l = document.createElement('label'); l.className = 'ux-switch';
+      const i = document.createElement('input'); i.type = 'checkbox'; i.id = id;
+      const v = ls(key); i.checked = v === null ? def : v === '1';
+      i.onchange = () => { ls(key, i.checked ? '1' : '0'); onchange && onchange(i.checked); };
+      l.appendChild(i); l.appendChild(document.createTextNode(label)); panel.appendChild(l); return i;
+    }
+    sw('ux-sound', U('🔊 Som', '🔊 Sound'), 'bw_snd', true, on => { window.__uxMuted = !on; });
+    sw('ux-vib', U('📳 Vibração', '📳 Vibration'), 'bw_vib', true);
+    sw('ux-autofs', U('⛶ Iniciar em tela cheia', '⛶ Start in fullscreen'), 'bw_autofs', false);
+
+    ctr.parentNode.insertBefore(panel, ctr.nextSibling);
+
+    // legenda recolhível
+    const leg = document.querySelector('#page-game .legend');
+    if (leg && !$('ux-legend')) {
+      const d = document.createElement('details'); d.id = 'ux-legend';
+      const s = document.createElement('summary'); s.textContent = U('Legenda dos erros', 'Fault legend');
+      d.appendChild(s); leg.parentNode.insertBefore(d, leg); d.appendChild(leg);
+    }
+  }
+
+  // ───────── Avisos de erro na arena + vibração ─────────
+  const TIPS = {
+    double: [U('Cruzamento duplo', 'Double crossing'), U('Cada obstáculo conta uma vez só. Evite voltar a cruzá-lo.', 'Each obstacle counts only once. Avoid crossing it again.')],
+    curve: [U('Curva brusca', 'Sharp turn'), U('Abra mais a curva antes do obstáculo.', 'Open up the turn before the obstacle.')],
+    stop: [U('Parada ilegal', 'Illegal stop'), U('Mantenha o movimento, sem parar no meio do percurso.', 'Keep moving, no stopping mid-course.')],
+    angle: [U('Ângulo errado', 'Wrong angle'), U('Chegue de frente (90°) ao obstáculo.', 'Approach the obstacle head-on (90°).')],
+    center: [U('Fora do centro', 'Off-centre'), U('Mire no meio do obstáculo.', 'Aim for the middle of the obstacle.')],
+    lift: [U('Percurso interrompido', 'Course interrupted'), U('Não solte o dedo/mouse até o último obstáculo.', 'Do not lift your finger/mouse until the last obstacle.')],
+    loop: [U('Laço', 'Loop'), U('Evite cruzar o seu próprio traçado.', 'Avoid crossing your own track.')],
+    speed: [U('Velocidade excessiva', 'Excess speed'), U('Vá um pouco mais devagar.', 'Slow down a little.')]
+  };
+  let toastT = null, lastN = 0, lastCross = 0;
+  function toast(title, msg, withRetry) {
+    const wrap = $('board-wrap'); if (!wrap) return;
+    let t = $('ux-toast'); if (!t) { t = document.createElement('div'); t.id = 'ux-toast'; t.setAttribute('role', 'status'); t.setAttribute('aria-live', 'polite'); wrap.appendChild(t); }
+    t.innerHTML = '';
+    const box = document.createElement('div'); box.className = 'box';
+    const tx = document.createElement('div'); const b = document.createElement('b'); b.textContent = title; const s = document.createElement('span'); s.textContent = msg;
+    tx.appendChild(b); tx.appendChild(s); box.appendChild(tx);
+    if (withRetry) { const r = document.createElement('button'); r.textContent = U('↺ Tentar de novo', '↺ Try again'); r.onclick = () => { reset(); clearToast(); }; box.appendChild(r); }
+    t.appendChild(box); clearTimeout(toastT);
+    toastT = setTimeout(clearToast, withRetry ? 6000 : 3200);
+  }
+  function clearToast() { const t = $('ux-toast'); if (t) t.innerHTML = ''; }
+
+  // ───────── Selos numerados nos obstáculos (cor não é a única pista) ─────────
+  function badges() {
+    const svg = $('board'); if (!svg) return;
+    let g = $('ux-badges');
+    if (!g) { g = document.createElementNS('http://www.w3.org/2000/svg', 'g'); g.id = 'ux-badges'; g.setAttribute('pointer-events', 'none'); svg.appendChild(g); }
+    const n = NUM_LOGS;
+    if (n > 8 || $('page-game').classList.contains('hidden')) { g.style.display = 'none'; return; }
+    g.style.display = '';
+    while (g.childNodes.length < n) {
+      const c = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      c.innerHTML = '<circle r="15" fill="#fff" stroke="#374151" stroke-width="3"/><text text-anchor="middle" dy="6" font-size="18" font-weight="800" font-family="DM Sans,sans-serif" fill="#111827"></text>';
+      g.appendChild(c);
+    }
+    [...g.childNodes].forEach((c, i) => {
+      if (i >= n) { c.style.display = 'none'; return; }
+      c.style.display = '';
+      const L = LOGS[i], a = L.angle * Math.PI / 180;
+      const x = L.x - Math.sin(a) * 40, y = L.y + Math.cos(a) * 40;
+      c.setAttribute('transform', `translate(${x.toFixed(1)},${y.toFixed(1)})`);
+      const done = crossedLogs.has(L.id);
+      c.firstChild.setAttribute('fill', done ? '#0d7a55' : '#fff');
+      c.firstChild.setAttribute('stroke', done ? '#0d7a55' : '#374151');
+      const tx = c.lastChild; tx.setAttribute('fill', done ? '#fff' : '#111827');
+      const v = done ? '✓' : ''; if (tx.textContent !== v) tx.textContent = v;
+    });
+  }
+
+  // ───────── Tick: erros, cruzamentos, dica do replay, badges ─────────
+  function tick() {
+    try {
+      const m = _errorMarkers;
+      if (m.length < lastN) lastN = m.length;
+      if (m.length > lastN) {
+        const mk = m[m.length - 1]; lastN = m.length;
+        if (mk.type === 'dq') { toast('🚫 ' + U('Desclassificado', 'Disqualified'), mk.label || '', true); vib([90, 60, 90]); }
+        else { const tp = TIPS[mk.type]; if (tp) toast('⚠ ' + tp[0], tp[1]); vib(60); }
+      }
+      const cs = crossedLogs.size;
+      if (cs > lastCross) vib(20);
+      lastCross = cs;
+      const rb = $('btn-replay'), h = $('ux-hint');
+      if (rb && h) {
+        const dis = rb.disabled;
+        rb.title = dis ? U('Disponível depois de completar o percurso', 'Available after you complete the course') : '';
+        h.textContent = dis && !$('page-game').classList.contains('hidden') ? U('🎬 O replay fica disponível depois de completar o percurso', '🎬 Replay unlocks once you complete the course') : '';
+      }
+      badges();
+    } catch (e) {}
+  }
+
+  // ───────── Estrelas + recorde no popup ─────────
+  function afterFinish() {
+    clearToast();
+    const total = errorDouble + errorCurve + errorStop + errorAngle + errorLift + errorSpeed + errorLoop + errorCenter;
+    const dq = errorDQ;
+    const stars = dq ? 0 : total === 0 ? 3 : total <= 2 ? 2 : total <= 5 ? 1 : 0;
+    const h = gameHistory[gameHistory.length - 1];
+    const adj = (!dq && h && h.adjTime != null) ? h.adjTime : null;
+    let rec = '';
+    if (adj != null) {
+      const prev = getBest(_selectedFormation);
+      const better = !prev || adj < prev.t;
+      ls(bestKey(_selectedFormation), JSON.stringify({ t: better ? adj : prev.t, s: Math.max(stars, prev ? prev.s : 0) }));
+      rec = better ? (prev ? U('🎉 Novo recorde pessoal!', '🎉 New personal best!') : U('🎉 Primeiro recorde registrado!', '🎉 First record saved!'))
+                   : U('🏆 Seu recorde: ', '🏆 Your best: ') + formatTime(prev.t);
+    }
+    const box = $('popup-box'), title = $('pop-title');
+    let st = $('ux-stars'), rc = $('ux-rec');
+    if (!st) { st = document.createElement('div'); st.id = 'ux-stars'; title.parentNode.insertBefore(st, title.nextSibling); }
+    if (!rc) { rc = document.createElement('div'); rc.id = 'ux-rec'; st.parentNode.insertBefore(rc, st.nextSibling); }
+    const pr = $('pop-restart-btn'); if (pr) pr.textContent = dq ? U('↺ Tentar de novo', '↺ Try again') : U('↺ Jogar de novo', '↺ Play again');
+    st.innerHTML = [0, 1, 2].map(i => `<span class="${i < stars ? '' : 'off'}">★</span>`).join('');
+    st.style.display = dq ? 'none' : '';
+    rc.textContent = rec;
+    if (!dq) { vib([40, 40, 80]); }
+    fixHeader();
+  }
+
+  // ───────── Tutorial visual ─────────
+  const SAND = '<rect width="300" height="170" fill="#e8d5a3"/>';
+  const LOGR = (x, y, a, c, w) => `<g transform="translate(${x},${y}) rotate(${a || 0})"><rect x="-${(w || 44)}" y="-6" width="${(w || 44) * 2}" height="12" rx="6" fill="${c || '#e74c3c'}"/><rect x="-${(w || 44) - 6}" y="-6" width="${((w || 44) - 6) * 2}" height="12" fill="none" stroke="#fff" stroke-dasharray="8 8" stroke-width="2" opacity=".6"/></g>`;
+  const FING = d => `<circle r="11" fill="#fff" stroke="#0d7a55" stroke-width="4" class="ux-finger" style="offset-path:path('${d}')"/>`;
+  const PATH = (d, c, len) => `<path d="${d}" fill="none" stroke="${c || '#12231C'}" stroke-width="5" stroke-linecap="round" class="ux-draw" style="--len:${len || 400}"/>`;
+  const TXT = (x, y, s, c) => `<text x="${x}" y="${y}" text-anchor="middle" font-size="13" font-weight="700" fill="${c}" font-family="DM Sans,sans-serif">${s}</text>`;
+  const D1 = 'M110,160 Q150,150 150,110 L150,25';
+  const SLIDES = [
+    { t: U('Trace com o dedo', 'Draw with your finger'), p: U('Seu dedo (ou mouse) é o cavalo. Toque e arraste para traçar o percurso — o traço começa assim que você toca.', 'Your finger (or mouse) is the horse. Touch and drag to draw the course — drawing starts as soon as you touch.'),
+      svg: SAND + LOGR(150, 80, 0, '#e74c3c') + PATH(D1, '#12231C', 200) + FING(D1) },
+    { t: U('Chegue de frente (90°)', 'Approach head-on (90°)'), p: U('Cruze cada obstáculo em ângulo reto — a tolerância é de apenas ±20°.', 'Cross each obstacle at a right angle — tolerance is only ±20°.'),
+      svg: SAND + LOGR(75, 80, 0, '#2980b9', 38) + '<path d="M75,150 L75,15" stroke="#059669" stroke-width="5" fill="none" stroke-linecap="round"/>' + TXT(75, 165, U('✓ Certo', '✓ Right'), '#065f46')
+        + LOGR(225, 80, 0, '#2980b9', 38) + '<path d="M185,140 L265,25" stroke="#dc2626" stroke-width="5" fill="none" stroke-linecap="round"/>' + TXT(225, 165, U('✗ Torto', '✗ Slanted'), '#991b1b') },
+    { t: U('Curvas abertas, sem parar', 'Wide turns, no stopping'), p: U('Faça curvas largas e suaves e não pare no meio do caminho. Curva fechada demais é falta — ou desclassificação.', 'Make wide, smooth turns and keep moving. A turn that is too tight is a fault — or disqualification.'),
+      svg: SAND + '<path d="M20,140 C20,20 130,20 130,110" stroke="#059669" stroke-width="5" fill="none" stroke-linecap="round"/>' + TXT(75, 160, U('✓ Aberta', '✓ Wide'), '#065f46')
+        + '<path d="M170,140 L185,25 L200,140" stroke="#dc2626" stroke-width="5" fill="none" stroke-linejoin="round" stroke-linecap="round"/>' + TXT(230, 160, U('✗ Fechada', '✗ Too tight'), '#991b1b') },
+    { t: U('Cruze todos, uma vez cada', 'Cross them all, once each'), p: U('O objetivo é passar por todos os obstáculos, sem repetir nenhum. Os selos ao lado de cada obstáculo ficam verdes ✓ conforme você avança. Menos faltas = mais estrelas ⭐', 'Cross every obstacle without repeating any. The badge beside each obstacle turns green ✓ as you go. Fewer faults = more stars ⭐'),
+      svg: SAND + [[100, 40, -45, '#e74c3c', 1], [200, 40, 45, '#2980b9', 2], [150, 85, 90, '#f1c40f', 3], [100, 130, 45, '#27ae60', 4], [200, 130, -45, '#8e44ad', 5]].map(a => LOGR(a[0], a[1], a[2], a[3], 24)
+        + `<g transform="translate(${a[0] + (a[4] === 3 ? 22 : 0)},${a[1] + (a[4] === 3 ? 0 : 20)})"><circle r="11" fill="${a[4] < 3 ? '#0d7a55' : '#fff'}" stroke="#374151" stroke-width="2"/><text text-anchor="middle" dy="4" font-size="12" font-weight="800" fill="${a[4] < 3 ? '#fff' : '#111'}">${a[4] < 3 ? '✓' : ''}</text></g>`).join('') }
+  ];
+  let ci = 0;
+  function coachRender() {
+    const o = $('ux-coach'), s = SLIDES[ci], last = ci === SLIDES.length - 1;
+    o.querySelector('.stage').innerHTML = `<svg viewBox="0 0 300 170" role="img" aria-label="${s.t}">${s.svg}</svg>`;
+    o.querySelector('h3').textContent = s.t; o.querySelector('p').textContent = s.p;
+    o.querySelector('.dots').innerHTML = SLIDES.map((_, i) => `<i class="${i === ci ? 'on' : ''}"></i>`).join('');
+    o.querySelector('.skip').textContent = last ? U('← Voltar', '← Back') : U('Pular', 'Skip');
+    o.querySelector('.go').textContent = last ? U('▶ Começar', '▶ Start') : U('Próximo →', 'Next →');
+    o.querySelector('.fsopt').style.display = last ? '' : 'none';
+  }
+  function coachClose() { $('ux-coach').classList.remove('open'); ls('bw_coach', '1'); }
+  function coachOpen() {
+    let o = $('ux-coach');
+    if (!o) {
+      o = document.createElement('div'); o.id = 'ux-coach'; o.setAttribute('role', 'dialog'); o.setAttribute('aria-modal', 'true');
+      o.innerHTML = '<div class="card"><div class="stage"></div><h3></h3><p></p><div class="dots"></div>'
+        + '<label class="ux-switch fsopt" style="justify-content:center;width:100%"><input type="checkbox" id="ux-fs2"> <span></span></label>'
+        + '<div class="row"><button class="skip" type="button"></button><button class="go" type="button"></button></div>'
+        + '<div class="links"><a id="ux-fullrules"></a></div></div>';
+      document.body.appendChild(o);
+      o.querySelector('.fsopt span').textContent = U('Jogar em tela cheia', 'Play in fullscreen');
+      $('ux-fullrules').textContent = U('Ver regras completas', 'See the full rules');
+      $('ux-fullrules').onclick = () => { coachClose(); window.__openFullRules(); };
+      o.querySelector('.skip').onclick = () => { if (ci === SLIDES.length - 1) { ci--; coachRender(); } else coachClose(); };
+      o.querySelector('.go').onclick = () => {
+        if (ci < SLIDES.length - 1) { ci++; coachRender(); }
+        else { const fs = $('ux-fs2').checked; coachClose(); if (fs) { ls('bw_autofs', '1'); const a = $('ux-autofs'); if (a) a.checked = true; try { toggleFullscreen(); } catch (e) {} } }
+      };
+    }
+    ci = 0; $('ux-fs2').checked = ls('bw_autofs') === '1'; coachRender(); o.classList.add('open');
+    o.querySelector('.go').focus();
+  }
+  window.__openFullRules = window.openTutorial;
+  window.openTutorial = coachOpen;
+
+  // ───────── Envolve as funções do jogo ─────────
+  const _start = window.startFormation;
+  window.startFormation = function () {
+    _start.apply(this, arguments);
+    lastN = 0; lastCross = 0; clearToast();
+    fixHeader(); buildControls(); badges();
+    document.body.classList.remove('ux-fs');
+    if (!ls('bw_coach')) coachOpen();
+    else if (ls('bw_autofs') === '1') { try { toggleFullscreen(); } catch (e) {} }
+  };
+  const _fin = window.finishGame;
+  window.finishGame = function () { _fin.apply(this, arguments); try { afterFinish(); } catch (e) { console.error(e); } };
+  const _rst = window.reset;
+  window.reset = function () { const r = _rst.apply(this, arguments); lastN = 0; lastCross = 0; clearToast(); return r; };
+  const _menu = window.showMenuPage;
+  if (_menu) window.showMenuPage = function () { const r = _menu.apply(this, arguments); decorateMenu(); return r; };
+  const _fs = window.toggleFullscreen;
+  window.toggleFullscreen = function () { const r = _fs.apply(this, arguments); setTimeout(() => document.body.classList.toggle('ux-fs', !!document.querySelector('.canvas-wrap.fs-active')), 50); return r; };
+
+  // ───────── Atalhos de teclado ─────────
+  document.addEventListener('keydown', e => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const tg = (e.target && e.target.tagName) || '';
+    if (/INPUT|TEXTAREA|SELECT/.test(tg)) return;
+    if ($('page-game').classList.contains('hidden')) return;
+    const k = e.key.toLowerCase();
+    if (k === 'escape') { $('ux-coach') && $('ux-coach').classList.contains('open') && coachClose(); const p = $('ux-opts-panel'); p && p.classList.remove('open'); return; }
+    if ($('ux-coach') && $('ux-coach').classList.contains('open')) return;
+    if (k === 'r') { reset(); }
+    else if (k === 'f') { toggleFullscreen(); }
+    else if (k === 'p') { const b = $('btn-replay'); if (b && !b.disabled) b.click(); }
+    else if (k === 'm') { const s = $('ux-sound'); if (s) { s.checked = !s.checked; s.onchange(); } }
+    else if (k === '?' || k === 'h') { coachOpen(); }
+  });
+
+  decorateMenu();
+  setInterval(tick, 120);
 })();
 
 </script>
