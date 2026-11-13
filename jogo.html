@@ -6517,14 +6517,15 @@ document.addEventListener('webkitfullscreenchange', () => {
     g.style.display = '';
     while (g.childNodes.length < n) {
       const c = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-      c.innerHTML = '<circle r="15" fill="#fff" stroke="#374151" stroke-width="3"/><text text-anchor="middle" dy="6" font-size="18" font-weight="800" font-family="DM Sans,sans-serif" fill="#111827"></text>';
+      c.innerHTML = '<circle r="13" fill="#fff" stroke="#374151" stroke-width="3"/><text text-anchor="middle" dy="5" font-size="16" font-weight="800" font-family="DM Sans,sans-serif" fill="#111827"></text>';
       g.appendChild(c);
     }
     [...g.childNodes].forEach((c, i) => {
       if (i >= n) { c.style.display = 'none'; return; }
       c.style.display = '';
       const L = LOGS[i], a = L.angle * Math.PI / 180;
-      const x = L.x - Math.sin(a) * 40, y = L.y + Math.cos(a) * 40;
+      let ux = Math.cos(a), uy = Math.sin(a); if (uy > 0 || (Math.abs(uy) < 1e-6 && ux > 0)) { ux = -ux; uy = -uy; }
+      const x = L.x + ux * 58, y = L.y + uy * 58; // numa ponta do próprio obstáculo (a de cima)
       c.setAttribute('transform', `translate(${x.toFixed(1)},${y.toFixed(1)})`);
       const done = crossedLogs.has(L.id);
       c.firstChild.setAttribute('fill', done ? '#0d7a55' : '#fff');
